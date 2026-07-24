@@ -97,323 +97,269 @@ export class ContractNotFoundError extends Error {
   }
 }
 
-expor…11367 tokens truncated…(
-      "Descreva a finalidade quando selecionar a opção outros.",
-    );
+export class ContractPermissionError extends Error {
+  constructor() {
+    super("O usuário não possui permissão para esta operação contratual.");
+    this.name = "ContractPermissionError";
   }
-  if (normalized && normalized.length > 500) {
-    throw new ProposalStateError(
-      "A descrição da finalidade deve possuir no máximo 500 caracteres.",
-    );
-  }
-  return normalized || undefined;
 }
 
-function parseFutureInstant(
-  value: string,
-  now: Date,
-  field: string,
-): string {
-  const instant = new Date(value);
-  if (Number.isNaN(instant.getTime()) || instant.getTime() <= now.getTime()) {
-    throw new ProposalStateError(field + " deve indicar uma data futura.");
+export class ContractStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ContractStateError";
   }
-  return instant.toISOString();
 }
 
-function normalizeOpinion(opinion: string): string {
-  const normalized = opinion.trim().replace(/\s+/g, " ");
-  if (normalized.length < 20 || normalized.length > 2_000) {
-    throw new ProposalStateError(
-      "O parecer deve possuir entre 20 e 2.000 caracteres.",
-    );
-  }
-  return normalized;
-}
-
-function normalizeDecisionReason(
-  outcome: "approved" | "rejected",
-  reason?: string,
-): string | undefined {
-  const normalized = reason?.trim().replace(/\s+/g, " ");
-  if (outcome === "rejected" && (!normalized || normalized.length < 10)) {
-    throw new ProposalStateError(
-      "A recusa exige um motivo objetivo e não discriminatório.",
-    );
-  }
-  if (normalized && normalized.length > 1_000) {
-    throw new ProposalStateError(
-      "O motivo da decisão deve possuir no máximo 1.000 caracteres.",
-    );
-  }
-  return normalized || undefined;
-}
-
-export class ProposalService {
-  private readonly proposals: ProposalRepository;
+export class ContractService {
+  private readonly contracts: ContractRepository;
+  private readonly pdf: ContractPdfGenerator;
+  private readonly storage: ImmutableContractStorage;
+  private readonly signatures: ElectronicSignatureProvider;
   private readonly audit: ProposalAuditWriter;
-  private readonly approvalPolicy: ProposalApprovalPolicy;
   private readonly createId: () => string;
   private readonly now: () => Date;
 
   constructor(
-    proposals: ProposalRepository,
+    contracts: ContractRepository,
+    pdf: ContractPdfGenerator,
+    storage: ImmutableContractStorage,
+    signatures: ElectronicSignatureProvider,
     audit: ProposalAuditWriter,
-    approvalPolicy: ProposalApprovalPolicy,
     createId: () => string,
     now: () => Date = () => new Date(),
   ) {
-    this.proposals = proposals;
+    this.contracts = contracts;
+    this.pdf = pdf;
+    this.storage = storage;
+    this.signatures = signatures;
     this.audit = audit;
-    this.approvalPolicy = approvalPolicy;
     this.createId = createId;
     this.now = now;
   }
 
-  async createDraft(
+  async createForLoan(
     context: ProposalActorContext,
-    input: ProposalDraftInput,
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "write");
-    if (!input.clientId.trim()) {
-      throw new ProposalStateError("Informe o cliente da proposta.");
+    loan: LoanRecord,
+    template: ContractTemplate,
+    fields: Readonly<Record<string, string>>,
+  ): Promise<ContractRecord> {
+    this.requireWrite(context.role);
+    assertTenantAccess(context.tenantId, loan.tenantId);
+    if (loan.status !== "active") {
+      throw new ContractStateError(
+        "O contrato exige um empréstimo ativo e aprovado.",
+      );
     }
 
-    const createdAt = this.now();
-    const proposal = await this.proposals.create({
-      id: this.createId(),
-      tenantId: context.tenantId,
-      clientId: input.clientId.trim(),
-      purpose: input.purpose,
-      ...(normalizePurposeDetails(input.purpose, input.purposeDetails)
-        ? {
-            purposeDetails: normalizePurposeDetails(
-              input.purpose,
-              input.purposeDetails,
-            ),
-          }
-        : {}),
-      simulation: simulateProposal(input.simulation),
-      checklist: createProposalChecklist(),
-      status: "draft",
-      validUntil: parseFutureInstant(
-        input.validUntil,
-        createdAt,
-        "A validade da proposta",
-      ),
-      createdBy: context.userId,
-      createdAt: createdAt.toISOString(),
-      updatedAt: createdAt.toISOString(),
-    });
+    return this.createVersion(context, loan, template, fields, 1);
+  }
 
-    await this.writeAudit(context, proposal.id, "proposal.created", {
-      clientId: proposal.clientId,
-      principalCents: proposal.simulation.principalCents,
-      installmentCount: proposal.simulation.installmentCount,
-    });
-    return proposal;
+  async createAddendum(
+    context: ProposalActorContext,
+    loan: LoanRecord,
+    parentContractId: string,
+    template: ContractTemplate,
+    fields: Readonly<Record<string, string>>,
+  ): Promise<ContractRecord> {
+    this.requireWrite(context.role);
+    const parent = await this.get(context, parentContractId);
+    if (parent.loanId !== loan.id || parent.status !== "signed") {
+      throw new ContractStateError(
+        "Aditivos exigem um contrato assinado do mesmo empréstimo.",
+      );
+    }
+    return this.createVersion(
+      context,
+      loan,
+      template,
+      fields,
+      parent.version + 1,
+      parent.id,
+    );
   }
 
   async get(
     context: ProposalActorContext,
-    proposalId: string,
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "read");
-    const proposal = await this.proposals.findById(
-      context.tenantId,
-      proposalId,
-    );
-    if (!proposal) {
-      throw new ProposalNotFoundError();
+    contractId: string,
+  ): Promise<ContractRecord> {
+    if (!hasPermission(context.role, "finance.read")) {
+      throw new ContractPermissionError();
     }
-    assertTenantAccess(context.tenantId, proposal.tenantId);
-    return proposal;
+    const contract = await this.contracts.findById(
+      context.tenantId,
+      contractId,
+    );
+    if (!contract) throw new ContractNotFoundError();
+    assertTenantAccess(context.tenantId, contract.tenantId);
+    return contract;
   }
 
-  async updateChecklist(
+  async sendForSignature(
     context: ProposalActorContext,
-    proposalId: string,
-    checklist: readonly ProposalChecklistItem[],
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "write");
-    const proposal = await this.get(context, proposalId);
-    if (proposal.status !== "draft") {
-      throw new ProposalStateError(
-        "O checklist só pode ser alterado enquanto a proposta está em rascunho.",
+    contractId: string,
+    originalPdf: Uint8Array,
+    signers: readonly { id: string; name: string; contact: string }[],
+  ): Promise<ContractRecord> {
+    this.requireWrite(context.role);
+    const contract = await this.get(context, contractId);
+    if (contract.status !== "draft") {
+      throw new ContractStateError(
+        "Somente contratos em rascunho podem ser enviados.",
       );
     }
-
-    const updated = await this.proposals.update(
+    if (originalPdf.byteLength === 0 || signers.length === 0) {
+      throw new ContractStateError("PDF e signatários são obrigatórios.");
+    }
+    const envelope = await this.signatures.createEnvelope({
+      contractId,
+      pdf: originalPdf,
+      signers,
+    });
+    if (!envelope.envelopeId) {
+      throw new ContractStateError(
+        "O provedor não retornou um envelope de assinatura.",
+      );
+    }
+    const updated = await this.contracts.update(
       context.tenantId,
-      proposal.id,
+      contractId,
       {
-        checklist: validateProposalChecklist(checklist),
-        updatedAt: this.now().toISOString(),
+        status: "sent",
+        signatureEnvelopeId: envelope.envelopeId,
       },
     );
-    await this.writeAudit(context, proposal.id, "proposal.checklist.updated");
+    await this.writeAudit(context, contractId, "contract.signature.requested", {
+      envelopeId: envelope.envelopeId,
+      signerCount: signers.length,
+    });
     return updated;
   }
 
-  async submit(
+  async completeSignature(
     context: ProposalActorContext,
-    proposalId: string,
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "write");
-    const proposal = await this.get(context, proposalId);
-    if (proposal.status !== "draft") {
-      throw new ProposalStateError(
-        "Somente propostas em rascunho podem ser enviadas para análise.",
-      );
-    }
-    this.assertNotExpired(proposal);
-    if (!isProposalChecklistComplete(proposal.checklist)) {
-      throw new ProposalStateError(
-        "Verifique todo o checklist documental antes de enviar a proposta.",
-      );
-    }
-
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      { status: "submitted", updatedAt: this.now().toISOString() },
-    );
-    await this.writeAudit(context, proposal.id, "proposal.submitted");
-    return updated;
-  }
-
-  async review(
-    context: ProposalActorContext,
-    proposalId: string,
-    input: { opinion: string; score: CreditScoreInput },
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "approve");
-    const proposal = await this.get(context, proposalId);
+    contractId: string,
+    providerPayload: unknown,
+  ): Promise<ContractRecord> {
+    this.requireWrite(context.role);
+    const contract = await this.get(context, contractId);
     if (
-      proposal.status !== "submitted" &&
-      proposal.status !== "under_review"
+      contract.status !== "sent" ||
+      !contract.signatureEnvelopeId
     ) {
-      throw new ProposalStateError(
-        "A proposta precisa estar enviada ou em análise.",
+      throw new ContractStateError(
+        "O contrato não está aguardando assinatura.",
       );
     }
-    this.assertNotExpired(proposal);
-
-    const review: ProposalReview = {
-      reviewerId: context.userId,
-      opinion: normalizeOpinion(input.opinion),
-      score: calculateExplainableCreditScore(input.score),
-      reviewedAt: this.now().toISOString(),
-    };
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      {
-        status: "under_review",
-        review,
-        updatedAt: this.now().toISOString(),
-      },
-    );
-    await this.writeAudit(context, proposal.id, "proposal.reviewed", {
-      score: review.score.value,
-      riskBand: review.score.riskBand,
-    });
-    return updated;
-  }
-
-  async decide(
-    context: ProposalActorContext,
-    proposalId: string,
-    input: { outcome: "approved" | "rejected"; reason?: string },
-  ): Promise<ProposalRecord> {
-    this.requirePermission(context.role, "approve");
-    const proposal = await this.get(context, proposalId);
-    if (proposal.status !== "under_review" || !proposal.review) {
-      throw new ProposalStateError(
-        "A proposta exige parecer humano antes da decisão.",
-      );
-    }
-    this.assertNotExpired(proposal);
+    const completion =
+      await this.signatures.verifyCompletion(providerPayload);
     if (
-      !this.approvalPolicy.canApprove({
-        role: context.role,
-        principalCents: proposal.simulation.principalCents,
-        totalCents: proposal.simulation.totalCents,
-      })
+      completion.envelopeId !== contract.signatureEnvelopeId ||
+      completion.signedPdf.byteLength === 0 ||
+      completion.evidence.length === 0
     ) {
-      throw new ProposalPermissionError(
-        "O valor ultrapassa a alçada deste usuário.",
+      throw new ContractStateError(
+        "A evidência de assinatura não corresponde ao contrato.",
       );
     }
-
-    const reason = normalizeDecisionReason(input.outcome, input.reason);
-    const decision: ProposalDecision = {
-      outcome: input.outcome,
-      decidedBy: context.userId,
-      ...(reason ? { reason } : {}),
-      decidedAt: this.now().toISOString(),
-    };
-    const updated = await this.proposals.update(
+    const path = buildContractStoragePath({
+      tenantId: contract.tenantId,
+      loanId: contract.loanId,
+      contractId: contract.id,
+      version: contract.version,
+      kind: "signed",
+    });
+    const stored = await this.storage.put({
+      path,
+      contentType: "application/pdf",
+      bytes: completion.signedPdf,
+      immutable: true,
+    });
+    const signedAt = this.now().toISOString();
+    const updated = await this.contracts.update(
       context.tenantId,
-      proposal.id,
+      contractId,
       {
-        status: input.outcome,
-        decision,
-        updatedAt: this.now().toISOString(),
+        status: "signed",
+        signed: { path, sha256: stored.sha256, createdAt: signedAt },
+        signatureEvidence: Object.freeze([...completion.evidence]),
       },
     );
-    await this.writeAudit(context, proposal.id, "proposal." + input.outcome, {
-      reason: reason ?? null,
+    await this.writeAudit(context, contractId, "contract.signed", {
+      sha256: stored.sha256,
+      evidenceCount: completion.evidence.length,
     });
     return updated;
   }
 
-  createClientSummary(proposal: ProposalRecord): Readonly<{
-    proposalId: string;
-    status: ProposalStatus;
-    purpose: CreditPurpose;
-    principalCents: number;
-    interestCents: number;
-    totalCents: number;
-    installmentCount: number;
-    installments: ProposalSimulation["installments"];
-    validUntil: string;
-    decisionReason?: string;
-  }> {
-    return Object.freeze({
-      proposalId: proposal.id,
-      status: proposal.status,
-      purpose: proposal.purpose,
-      principalCents: proposal.simulation.principalCents,
-      interestCents: proposal.simulation.interestCents,
-      totalCents: proposal.simulation.totalCents,
-      installmentCount: proposal.simulation.installmentCount,
-      installments: proposal.simulation.installments,
-      validUntil: proposal.validUntil,
-      ...(proposal.decision?.reason
-        ? { decisionReason: proposal.decision.reason }
-        : {}),
+  async canDisburse(
+    context: ProposalActorContext,
+    loanId: string,
+  ): Promise<boolean> {
+    const contract = await this.contracts.findSignedByLoan(
+      context.tenantId,
+      loanId,
+    );
+    return Boolean(contract?.signed && contract.signatureEvidence?.length);
+  }
+
+  private async createVersion(
+    context: ProposalActorContext,
+    loan: LoanRecord,
+    template: ContractTemplate,
+    fields: Readonly<Record<string, string>>,
+    version: number,
+    parentContractId?: string,
+  ): Promise<ContractRecord> {
+    assertTenantAccess(context.tenantId, loan.tenantId);
+    const contractId = this.createId();
+    const rendered = renderContractTemplate(template, fields);
+    const bytes = await this.pdf.generate({
+      identifier: contractId + ":v" + version,
+      title: "Contrato de empréstimo",
+      content: rendered.content,
     });
-  }
-
-  private assertNotExpired(proposal: ProposalRecord): void {
-    if (new Date(proposal.validUntil).getTime() <= this.now().getTime()) {
-      throw new ProposalStateError("A proposta está vencida.");
+    if (bytes.byteLength === 0) {
+      throw new ContractStateError("O gerador retornou um PDF vazio.");
     }
+    const path = buildContractStoragePath({
+      tenantId: context.tenantId,
+      loanId: loan.id,
+      contractId,
+      version,
+      kind: parentContractId ? "addendum" : "original",
+    });
+    const stored = await this.storage.put({
+      path,
+      contentType: "application/pdf",
+      bytes,
+      immutable: true,
+    });
+    const createdAt = this.now().toISOString();
+    const contract = await this.contracts.create({
+      id: contractId,
+      tenantId: context.tenantId,
+      loanId: loan.id,
+      ...(parentContractId ? { parentContractId } : {}),
+      version,
+      status: "draft",
+      templateId: rendered.templateId,
+      templateVersion: rendered.templateVersion,
+      original: { path, sha256: stored.sha256, createdAt },
+      createdBy: context.userId,
+      createdAt,
+    });
+    await this.writeAudit(context, contract.id, "contract.created", {
+      loanId: loan.id,
+      version,
+      sha256: stored.sha256,
+    });
+    return contract;
   }
 
-  private requirePermission(
-    role: AppRole,
-    action: "read" | "write" | "approve",
-  ): void {
-    const permission =
-      action === "read"
-        ? "proposals.read"
-        : action === "write"
-          ? "proposals.write"
-          : "proposals.approve";
-    if (!hasPermission(role, permission)) {
-      throw new ProposalPermissionError();
+  private requireWrite(role: AppRole): void {
+    if (!hasPermission(role, "finance.write")) {
+      throw new ContractPermissionError();
     }
   }
 
@@ -427,7 +373,7 @@ export class ProposalService {
       tenantId: context.tenantId,
       actorId: context.userId,
       action,
-      entityType: "proposal",
+      entityType: "contract",
       entityId,
       ...(details ? { details } : {}),
     });
