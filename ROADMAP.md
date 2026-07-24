@@ -23,23 +23,23 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 | A | Proteção do projeto, inventário e escopo congelado | Aprovado; ruleset final pendente |
 | B | Contas reais de PIX e WhatsApp conectadas e validadas | Preparada; conexões finais pendentes |
 | C | Fundação Next.js/TypeScript/Supabase | Concluída tecnicamente |
-| D | Banco multiempresa e RLS | Estrutura concluída; aplicação e teste no Supabase real pendentes |
-| E | Autenticação e permissões | Base técnica concluída; provedores de contato, MFA e testes reais pendentes |
-| F | Interface migrada fielmente | Pendente |
-| G | Primeiro fluxo real de clientes | Domínio concluído; persistência e teste real pendentes |
-| H | Cadastro por link e WhatsApp | Base segura concluída; formulário e envio real pendentes |
-| I | Propostas e análise | Pendente |
-| J | Núcleo financeiro | Pendente |
-| K | Contratos e assinatura | Pendente |
-| L | PIX e conciliação | Pendente |
-| M | Cobrança por WhatsApp | Pendente |
-| N | Dashboard, relatórios e portal | Pendente |
-| O | Assinatura do SaaS | Pendente |
-| P | IA responsável | Pendente |
-| Q | Segurança, LGPD e qualidade | Pendente |
-| R | Aplicativos Android e iPhone | Pendente |
-| S | Produção, lançamento e operação | Pendente |
+| D | Banco multiempresa e RLS | Concluído tecnicamente; aplicação no Supabase real pendente |
+| E | Autenticação e permissões | Base técnica concluída; MFA e testes reais pendentes |
+| F | Interface migrada fielmente | Protótipo oficial preservado; conexão completa aos fluxos reais pendente |
+| G | Primeiro fluxo real de clientes | Domínio concluído; persistência real pendente |
+| H | Cadastro por link e WhatsApp | Base segura concluída; envio real pendente |
+| I | Propostas e análise | Concluído tecnicamente |
+| J | Núcleo financeiro | Concluído tecnicamente |
+| K | Contratos e assinatura | Concluído tecnicamente; provedor real pendente |
+| L | PIX e conciliação | Concluído tecnicamente; conta e homologação pendentes |
+| M | Cobrança por WhatsApp | Concluído tecnicamente; templates e conta pendentes |
+| N | Dashboard, relatórios e portal | Domínio, relatórios e portal seguro concluídos tecnicamente |
+| O | Assinatura do SaaS | Concluído tecnicamente; provedor real pendente |
+| P | IA responsável | Concluído tecnicamente; provedor e orçamento pendentes |
+| Q | Segurança, LGPD e qualidade | Controles técnicos concluídos; validações profissionais pendentes |
+| R | Aplicativos Android e iPhone | Estrutura Flutter concluída; builds e lojas pendentes |
+| S | Produção, lançamento e operação | Runbooks concluídos; infraestrutura e publicação pendentes |
 
 ## Próximo marco
 
-Continuar os fluxos internos do MVP sem alterar a interface. A aplicação das migrações, autenticação real, PIX e WhatsApp ficam concentrados no fechamento porque dependem de contas, painéis protegidos e titular elegível ou responsável autorizado.
+Conectar o Supabase e os provedores escolhidos no ambiente protegido, validar as regras jurídicas e financeiras e executar homologação antes da publicação em produção.

@@ -76,3 +76,17 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 ### Preservado
 
 - Identidade visual e comportamento do protótipo `ControlPremium_PROTOTIPO_OFICIAL_V1.html`.
+
+### Entrega técnica dos Blocos I a S
+
+- Simulação determinística de propostas, checklist documental e pontuação explicável com decisão humana obrigatória.
+- Núcleo de empréstimos com parcelas, pagamentos parciais, quitação, estorno, recibos e razão financeiro imutável.
+- Contratos versionados, evidências de assinatura e bloqueio de liberação sem documento assinado.
+- PIX idempotente, webhooks assinados, conciliação e devolução auditável.
+- Cobrança por templates oficiais, consentimento, opt-out, horário seguro, feriados, cotas e retentativas.
+- Relatórios, exportação CSV segura e portal do cliente sem exposição de dados internos.
+- Assinaturas SaaS com limites, tolerância e eventos idempotentes.
+- IA limitada a sugestões mascaradas e sempre sujeita à revisão humana.
+- Retenção, anonimização, exportação de dados, resposta a incidentes e controles de segurança.
+- API V1, aplicativo Flutter, runbook de produção e checklist final de integrações externas.
+- Sessenta testes funcionais adicionais para os fluxos implementados.

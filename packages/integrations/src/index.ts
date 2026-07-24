@@ -6,6 +6,7 @@ export type PixCharge = Readonly<{
   amountCents: number;
   status: PixChargeStatus;
   copyAndPasteCode: string;
+  qrCodeText?: string;
   expiresAt: string;
 }>;
 
@@ -17,7 +18,25 @@ export interface PixProvider {
     payerReference: string;
   }): Promise<PixCharge>;
   getCharge(providerChargeId: string): Promise<PixCharge>;
+  refundCharge(input: {
+    providerChargeId: string;
+    amountCents: number;
+    idempotencyKey: string;
+  }): Promise<{ providerRefundId: string; status: "pending" | "confirmed" }>;
   verifyWebhook(headers: Headers, rawBody: string): Promise<boolean>;
+}
+
+export type VerifiedPixWebhook = Readonly<{
+  providerChargeId: string;
+  eventId: string;
+  endToEndId?: string;
+  status: PixChargeStatus;
+  amountCents: number;
+  occurredAt: string;
+}>;
+
+export interface PixWebhookDecoder {
+  decode(rawBody: string): VerifiedPixWebhook;
 }
 
 export type MessageStatus = "queued" | "sent" | "delivered" | "failed";
