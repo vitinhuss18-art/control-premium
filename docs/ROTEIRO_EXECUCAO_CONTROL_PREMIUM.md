@@ -169,19 +169,19 @@ Marco F: interface preservada e funcional em navegador.
 
 ### Bloco G - Primeiro fluxo vertical real
 
-71. Cadastrar empresa de teste.
+71. ~~Cadastrar empresa de teste.~~ ✅ Dados fictícios de duas empresas versionados em 24/07/2026.
 72. Autenticar administrador.
-73. Cadastrar cliente com validações.
-74. Enviar documentos ao Storage.
-75. Salvar cliente no PostgreSQL.
-76. Pesquisar e visualizar cliente.
-77. Editar e arquivar cliente.
-78. Prevenir CPF duplicado dentro das regras aprovadas.
-79. Registrar auditoria.
-80. Provar isolamento multiempresa.
+73. ~~Cadastrar cliente com validações.~~ ✅ Domínio e serviço de aplicação concluídos em 24/07/2026.
+74. Enviar documentos ao Storage. 🟡 Porta, limites e caminho privado concluídos; envio real depende do Supabase.
+75. Salvar cliente no PostgreSQL. 🟡 Repositório e tabela definidos; persistência real depende do Supabase.
+76. ~~Pesquisar e visualizar cliente.~~ ✅ Caso de uso concluído e testado em 24/07/2026.
+77. ~~Editar e arquivar cliente.~~ ✅ Caso de uso concluído e testado em 24/07/2026.
+78. ~~Prevenir CPF duplicado dentro das regras aprovadas.~~ ✅ Regra por empresa e restrição no banco concluídas.
+79. ~~Registrar auditoria.~~ ✅ Porta e eventos obrigatórios concluídos; gravação real depende do Supabase.
+80. Provar isolamento multiempresa. 🟡 Testes de domínio e SQL versionados; execução real permanece na lista final.
 81. Testar o fluxo no celular e computador.
 
-Marco G: primeiro fluxo real aprovado.
+Marco G: domínio do primeiro fluxo concluído; autenticação, persistência, Storage e E2E reais permanecem na lista final.
 
 ### Bloco H - Cadastro do cliente por link e WhatsApp
 
