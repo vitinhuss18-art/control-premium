@@ -69,7 +69,7 @@ Uma etapa somente estará concluída quando:
 
 ### Bloco A - Proteção do projeto e inventário
 
-1. Preservar `ControlPremium(3).html` como protótipo oficial imutável.
+1. ~~Preservar `ControlPremium(3).html` como protótipo oficial imutável.~~ ✅ Aprovado em 24/07/2026.
 2. Criar branch de desenvolvimento protegida.
 3. Criar `ROADMAP.md`, `CHANGELOG.md`, `ARQUITETURA.md` e este roteiro.
 4. Registrar todas as telas existentes sem alterar a interface.
