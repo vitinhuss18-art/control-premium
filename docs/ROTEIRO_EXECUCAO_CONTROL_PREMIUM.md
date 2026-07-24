@@ -86,35 +86,35 @@ Marco A: aprovado em 24/07/2026, com a aplicação do ruleset de servidor mantid
 
 11. Escolher provedor PIX com API, homologação, webhook, idempotência e documentação.
 12. Proprietário conectar sua conta PIX real e verificada.
-13. Codex criar apenas os nomes das variáveis PIX em `.env.example`, sem valores.
+13. ~~Codex criar apenas os nomes das variáveis PIX em `.env.example`, sem valores.~~ ✅ Concluído em 24/07/2026.
 14. Proprietário cadastrar as credenciais PIX no ambiente protegido.
 15. Codex testar a integração com a conta real do proprietário, começando pelo modo de homologação do provedor quando disponível e sem cobrança a clientes.
 16. Escolher provedor oficial de WhatsApp Business/API.
 17. Proprietário conectar e verificar sua conta e seu número real de WhatsApp.
-18. Codex criar apenas os nomes das variáveis WhatsApp em `.env.example`.
+18. ~~Codex criar apenas os nomes das variáveis WhatsApp em `.env.example`.~~ ✅ Concluído em 24/07/2026.
 19. Proprietário cadastrar token, número e identificadores no ambiente protegido.
 20. Codex testar uma mensagem de template usando a conta real, enviando inicialmente somente ao número do proprietário ou a destinatário de teste autorizado.
-21. Definir domínio, e-mail transacional, hospedagem e banco.
+21. Definir domínio, e-mail transacional, hospedagem e banco. 🟡 Next.js, Sites e Supabase definidos; domínio e provedor de e-mail permanecem na lista final.
 22. Proprietário conectar as contas que exigirem verificação.
 
 Marco B: contas reais de PIX e WhatsApp do proprietário conectadas e integração técnica validada.
 
 ### Bloco C - Fundação técnica
 
-23. Criar monorepo organizado.
-24. Criar aplicação Next.js com TypeScript.
-25. Criar pacote de componentes que reproduza a interface atual.
-26. Configurar lint, formatação e checagem de tipos.
-27. Configurar testes unitários, integração e ponta a ponta.
-28. Configurar ambientes local, homologação e produção.
-29. Criar `.env.example` sem segredos.
-30. Configurar Supabase/PostgreSQL.
-31. Configurar Supabase Storage.
-32. Criar pipeline de build e testes no GitHub.
-33. Criar tratamento padrão de erros e logs.
-34. Documentar como executar o projeto.
+23. ~~Criar monorepo organizado.~~ ✅ Concluído em 24/07/2026.
+24. ~~Criar aplicação Next.js com TypeScript.~~ ✅ Concluído em 24/07/2026.
+25. ~~Criar pacote de componentes que reproduza a interface atual.~~ ✅ Concluído em 24/07/2026.
+26. ~~Configurar lint, formatação e checagem de tipos.~~ ✅ Concluído em 24/07/2026.
+27. ~~Configurar testes unitários, integração e ponta a ponta.~~ ✅ Concluído em 24/07/2026.
+28. ~~Configurar ambientes local, homologação e produção.~~ ✅ Concluído em 24/07/2026.
+29. ~~Criar `.env.example` sem segredos.~~ ✅ Concluído em 24/07/2026.
+30. ~~Configurar Supabase/PostgreSQL.~~ ✅ Migrações versionadas; conexão do projeto real permanece na lista final.
+31. ~~Configurar Supabase Storage.~~ ✅ Bucket privado e RLS versionados; aplicação no projeto real permanece na lista final.
+32. ~~Criar pipeline de build e testes no GitHub.~~ ✅ Concluído em 24/07/2026.
+33. ~~Criar tratamento padrão de erros e logs.~~ ✅ Concluído em 24/07/2026.
+34. ~~Documentar como executar o projeto.~~ ✅ Concluído em 24/07/2026.
 
-Marco C: aplicação base executa, compila e passa nos testes.
+Marco C: concluído tecnicamente em 24/07/2026. Aplicação base compila e passa em formatação, lint, tipos, testes unitários e build; conexões externas permanecem na lista final.
 
 ### Bloco D - Banco multiempresa
 
@@ -410,8 +410,8 @@ O início operacional será:
 | Marco | Estado inicial |
 |---|---|
 | A - Escopo | Aprovado; ruleset final pendente |
-| B - Conexões de teste | Pendente |
-| C - Fundação | Pendente |
+| B - Conexões de teste | Em preparação; variáveis PIX/WhatsApp concluídas |
+| C - Fundação | Concluído tecnicamente |
 | D - Banco | Pendente |
 | E - Autenticação | Pendente |
 | F - Interface migrada | Pendente |
