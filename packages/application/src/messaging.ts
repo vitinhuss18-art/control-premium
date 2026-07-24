@@ -296,7 +296,6 @@ export class MessagingService {
         {
           tenantId: record.tenantId,
           userId: "message-worker",
-          role: "super_admin",
         },
         updated,
         "message." + updated.status,
