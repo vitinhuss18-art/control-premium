@@ -19,6 +19,12 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Modelo inicial de banco multiempresa e políticas RLS, ainda sujeitos à validação dos Blocos C e D.
 - Exemplo de variáveis de ambiente sem segredos.
 
+### Aprovado
+
+- Bloco A aprovado pelo proprietário em 24/07/2026.
+- Escopo do MVP congelado para execução automática.
+- Pendências que exigem conta, identidade, contrato, credenciais ou decisão externa passam a ser reunidas para a etapa final.
+
 ### Segurança
 
 - Proibição explícita de segredos no código e na documentação.
