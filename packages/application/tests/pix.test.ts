@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "vitest";
 
 import type {
+  PixCharge,
   PixProvider,
   PixWebhookDecoder,
   VerifiedPixWebhook,
@@ -33,7 +34,7 @@ class FakePixProvider implements PixProvider {
       expiresAt: input.expiresAt,
     };
   }
-  async getCharge() {
+  async getCharge(): Promise<PixCharge> {
     throw new Error("not needed");
   }
   async refundCharge() {
