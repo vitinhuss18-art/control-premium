@@ -185,20 +185,20 @@ Marco G: domínio do primeiro fluxo concluído; autenticação, persistência, S
 
 ### Bloco H - Cadastro do cliente por link e WhatsApp
 
-82. Criar convite de cadastro com token único, expiração e empresa vinculada.
-83. Criar link seguro de cadastro.
-84. Enviar o link por template oficial do WhatsApp.
-85. Cliente preencher seus próprios dados e documentos.
-86. Validar telefone e aceite de privacidade.
-87. Salvar cadastro como `em análise`.
+82. ~~Criar convite de cadastro com token único, expiração e empresa vinculada.~~ ✅ Serviço e contrato transacional concluídos em 24/07/2026.
+83. ~~Criar link seguro de cadastro.~~ ✅ HTTPS obrigatório, token aleatório transitório e somente hash persistido.
+84. Enviar o link por template oficial do WhatsApp. 🟡 Fila transacional e payload preparados; template e conta real ficam na lista final.
+85. Cliente preencher seus próprios dados e documentos. 🟡 Conclusão segura dos dados concluída; formulário e Storage reais pendentes.
+86. Validar telefone e aceite de privacidade. 🟡 Telefone brasileiro normalizado; registro do aceite permanece pendente.
+87. ~~Salvar cadastro como `em análise`.~~ ✅ Atualização atômica do cliente e consumo único do convite definidos.
 88. Notificar administrador.
 89. Administrador aprovar, solicitar correção ou recusar com motivo adequado.
 90. Gerar acesso do cliente somente após aprovação.
 91. Enviar confirmação e link oficial do aplicativo/web.
-92. Registrar mensagens, decisões e horários em auditoria.
-93. Testar token vencido, repetido, adulterado e pertencente a outra empresa.
+92. Registrar mensagens, decisões e horários em auditoria. 🟡 Convite e conclusão auditados; eventos dos passos 88 a 91 permanecem pendentes.
+93. Testar token vencido, repetido, adulterado e pertencente a outra empresa. 🟡 Expiração e repetição aprovadas; integração multiempresa real permanece na lista final.
 
-Marco H: cadastro por WhatsApp integrado ao módulo Novo Cliente.
+Marco H: base segura do cadastro por link concluída; formulário, aprovação, template oficial e envio real permanecem pendentes.
 
 ### Bloco I - Propostas e análise
 
@@ -415,8 +415,8 @@ O início operacional será:
 | D - Banco | Estrutura concluída; testes reais pendentes |
 | E - Autenticação | Base técnica concluída; ativação real pendente |
 | F - Interface migrada | Pendente |
-| G - Fluxo de clientes | Pendente |
-| H - Cadastro WhatsApp | Pendente |
+| G - Fluxo de clientes | Domínio concluído; integrações reais pendentes |
+| H - Cadastro WhatsApp | Base de convite concluída; integrações reais pendentes |
 | I - Propostas | Pendente |
 | J - Financeiro | Pendente |
 | K - Contratos | Pendente |
