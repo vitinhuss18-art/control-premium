@@ -11,6 +11,7 @@ SaaS profissional para gestão de clientes, propostas, empréstimos, parcelas, p
 - banco multiempresa, RLS e permissões preparados por migrações;
 - testes de isolamento, dados fictícios e roteiro de restauração versionados;
 - fluxo de clientes implementado no domínio e na camada de aplicação;
+- cadastro por link protegido por expiração, uso único e armazenamento somente do hash do token;
 - testes, lint, tipos, build e CI configurados;
 - conexões externas reunidas em `docs/PENDENCIAS_FINAIS.md`.
 
