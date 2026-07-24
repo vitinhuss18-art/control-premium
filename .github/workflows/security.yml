@@ -1,0 +1,45 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+  schedule:
+    - cron: "17 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Block high-severity production vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report the complete dependency tree
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  secret-patterns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject private keys
+        shell: bash
+        run: |
+          if git grep -nE -- 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'; then
+            echo "Private key material detected."
+            exit 1
+          fi
