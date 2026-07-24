@@ -4,3 +4,8 @@ node_modules
 playwright-report
 test-results
 apps/web/public/prototype.html
+ARQUITETURA.md
+ROADMAP.md
+docs
+index.html
+prototype
