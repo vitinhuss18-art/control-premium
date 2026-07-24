@@ -57,6 +57,15 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Auditoria obrigatória para cadastro, edição, arquivamento e documento.
 - Testes de permissões, duplicidade e isolamento entre empresas.
 
+### Cadastro por link
+
+- Convite vinculado à empresa e ao cliente, com expiração configurável de 1 a 72 horas.
+- Token de uso único mantido em texto apenas durante a geração do link e persistido somente como hash.
+- Endereço HTTPS obrigatório e fila transacional preparada para o template oficial do WhatsApp.
+- Preenchimento validado e consumo atômico do convite para impedir repetição.
+- Auditoria do convite e da conclusão, com erros públicos genéricos para evitar enumeração.
+- Testes de expiração, repetição, autorização e normalização do número brasileiro.
+
 ### Segurança
 
 - Proibição explícita de segredos no código e na documentação.

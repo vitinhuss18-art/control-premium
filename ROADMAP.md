@@ -27,7 +27,7 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 | E | Autenticação e permissões | Base técnica concluída; provedores de contato, MFA e testes reais pendentes |
 | F | Interface migrada fielmente | Pendente |
 | G | Primeiro fluxo real de clientes | Domínio concluído; persistência e teste real pendentes |
-| H | Cadastro por link e WhatsApp | Pendente |
+| H | Cadastro por link e WhatsApp | Base segura concluída; formulário e envio real pendentes |
 | I | Propostas e análise | Pendente |
 | J | Núcleo financeiro | Pendente |
 | K | Contratos e assinatura | Pendente |
