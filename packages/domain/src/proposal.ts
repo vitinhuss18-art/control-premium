@@ -247,80 +247,170 @@ export function simulateProposal(
       "A taxa periódica deve ficar entre 0% e 100%.",
     );
   }
-  if (!paymentF…2947 tokens truncated…trim() ||
-    !Number.isSafeInteger(plan.monthlyPriceCents) ||
-    plan.monthlyPriceCents < 0
-  ) {
-    throw new SubscriptionAccessError("Plano SaaS inválido.");
+  if (!paymentFrequencies.includes(input.frequency)) {
+    throw new ProposalValidationError(
+      "frequency",
+      "Informe uma frequência de pagamento válida.",
+    );
   }
-  for (const [limit, value] of Object.entries(plan.limits)) {
-    if (!Number.isSafeInteger(value) || value < 0) {
-      throw new SubscriptionAccessError(
-        "Limite inválido no plano: " + limit + ".",
-      );
-    }
-  }
+
+  const firstDueDate = parseIsoDate(input.firstDueDate, "firstDueDate");
+  const holidays = new Set(
+    (input.holidays ?? []).map((holiday) =>
+      toIsoDate(parseIsoDate(holiday, "holidays")),
+    ),
+  );
+  const principal = BigInt(input.principalCents);
+  const count = BigInt(input.installmentCount);
+  const interest = roundedDivision(
+    principal * BigInt(input.periodicInterestBps) * count,
+    10_000n,
+  );
+  const total = principal + interest;
+  const baseAmount = total / count;
+  const remainder = total % count;
+
+  const installments = Array.from(
+    { length: input.installmentCount },
+    (_, index): SimulatedInstallment => ({
+      number: index + 1,
+      dueDate: installmentDueDate(
+        firstDueDate,
+        input.frequency,
+        index,
+        holidays,
+      ),
+      amountCents: toSafeNumber(
+        baseAmount + (BigInt(index) < remainder ? 1n : 0n),
+        "installments",
+      ),
+    }),
+  );
+
   return Object.freeze({
-    ...plan,
-    limits: Object.freeze({ ...plan.limits }),
-    features: Object.freeze([...new Set(plan.features)]),
+    principalCents: input.principalCents,
+    interestCents: toSafeNumber(interest, "interestCents"),
+    totalCents: toSafeNumber(total, "totalCents"),
+    periodicInterestBps: input.periodicInterestBps,
+    installmentCount: input.installmentCount,
+    frequency: input.frequency,
+    installments: Object.freeze(installments),
   });
 }
 
-export function hasSubscriptionAccess(
-  subscription: TenantSubscription,
-  at: Date,
-): boolean {
+export function createProposalChecklist(): readonly ProposalChecklistItem[] {
+  return Object.freeze(
+    proposalDocumentTypes.map((type) => Object.freeze({ type, status: "missing" as const })),
+  );
+}
+
+export function validateProposalChecklist(
+  items: readonly ProposalChecklistItem[],
+): readonly ProposalChecklistItem[] {
+  const unique = new Set(items.map((item) => item.type));
   if (
-    subscription.status === "active" ||
-    subscription.status === "trialing"
+    items.length !== proposalDocumentTypes.length ||
+    unique.size !== proposalDocumentTypes.length ||
+    proposalDocumentTypes.some((type) => !unique.has(type))
   ) {
-    return true;
+    throw new ProposalValidationError(
+      "checklist",
+      "O checklist documental está incompleto ou duplicado.",
+    );
   }
+
+  for (const item of items) {
+    if (
+      item.status === "verified" &&
+      (!item.verifiedBy || !item.verifiedAt)
+    ) {
+      throw new ProposalValidationError(
+        "checklist",
+        "Documentos verificados exigem responsável e horário.",
+      );
+    }
+  }
+
+  return Object.freeze(items.map((item) => Object.freeze({ ...item })));
+}
+
+export function isProposalChecklistComplete(
+  items: readonly ProposalChecklistItem[],
+): boolean {
   return (
-    subscription.status === "past_due" &&
-    Boolean(
-      subscription.graceUntil &&
-        new Date(subscription.graceUntil).getTime() > at.getTime(),
+    validateProposalChecklist(items).every(
+      (item) => item.status === "verified",
     )
   );
 }
 
-export function assertFeatureAccess(
-  subscription: TenantSubscription,
-  plan: SaaSPlan,
-  feature: SaaSFeature,
-  at: Date,
-): void {
-  if (!hasSubscriptionAccess(subscription, at)) {
-    throw new SubscriptionAccessError(
-      "A assinatura não está ativa para novos lançamentos.",
-    );
-  }
-  if (!plan.features.includes(feature)) {
-    throw new SubscriptionAccessError(
-      "O recurso não está incluído no plano contratado.",
-    );
-  }
-}
-
-export function assertPlanLimit(
-  plan: SaaSPlan,
-  resource: keyof SaaSPlan["limits"],
-  currentUsage: number,
-  increment = 1,
-): void {
+export function calculateExplainableCreditScore(
+  input: CreditScoreInput,
+): ExplainableCreditScore {
   if (
-    !Number.isSafeInteger(currentUsage) ||
-    currentUsage < 0 ||
-    !Number.isSafeInteger(increment) ||
-    increment < 0
+    !Number.isSafeInteger(input.relationshipMonths) ||
+    input.relationshipMonths < 0 ||
+    input.relationshipMonths > 1_200
   ) {
-    throw new SubscriptionAccessError("Consumo do plano inválido.");
-  }
-  if (currentUsage + increment > plan.limits[resource]) {
-    throw new SubscriptionAccessError(
-      "O limite de " + resource + " do plano foi atingido.",
+    throw new ProposalValidationError(
+      "relationshipMonths",
+      "O tempo de relacionamento é inválido.",
     );
   }
+  if (
+    !Number.isSafeInteger(input.debtToIncomeBps) ||
+    input.debtToIncomeBps < 0 ||
+    input.debtToIncomeBps > 10_000
+  ) {
+    throw new ProposalValidationError(
+      "debtToIncomeBps",
+      "A relação entre dívida e renda deve ficar entre 0% e 100%.",
+    );
+  }
+
+  const relationshipPoints = Math.min(
+    15,
+    Math.floor(input.relationshipMonths / 4),
+  );
+  const debtPoints =
+    input.debtToIncomeBps <= 3_000
+      ? 15
+      : input.debtToIncomeBps <= 5_000
+        ? 8
+        : 0;
+  const factors: readonly CreditScoreFactor[] = Object.freeze([
+    {
+      code: "identity_verified",
+      description: "Identidade documental verificada",
+      points: input.identityVerified ? 20 : 0,
+    },
+    {
+      code: "address_verified",
+      description: "Endereço documental verificado",
+      points: input.addressVerified ? 15 : 0,
+    },
+    {
+      code: "income_verified",
+      description: "Renda documental verificada",
+      points: input.incomeVerified ? 35 : 0,
+    },
+    {
+      code: "relationship_length",
+      description: "Tempo de relacionamento",
+      points: relationshipPoints,
+    },
+    {
+      code: "debt_to_income",
+      description: "Relação entre dívida e renda declarada",
+      points: debtPoints,
+    },
+  ]);
+  const value = factors.reduce((total, factor) => total + factor.points, 0);
+
+  return Object.freeze({
+    value,
+    riskBand: value >= 80 ? "low" : value >= 50 ? "medium" : "high",
+    factors,
+    requiresHumanDecision: true,
+  });
 }
