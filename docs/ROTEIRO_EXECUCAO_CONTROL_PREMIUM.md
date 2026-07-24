@@ -1,6 +1,6 @@
 # Roteiro oficial de execução - Control Premium
 
-Versão: 1.0  
+Versão: 1.1  
 Data inicial: 24/07/2026  
 Repositório: `vitinhuss18-art/control-premium`  
 Regra principal: a interface visual atual deve ser preservada. Alterações visuais somente poderão ser feitas mediante autorização explícita do proprietário.
@@ -70,17 +70,17 @@ Uma etapa somente estará concluída quando:
 ### Bloco A - Proteção do projeto e inventário
 
 1. ~~Preservar `ControlPremium(3).html` como protótipo oficial imutável.~~ ✅ Aprovado em 24/07/2026.
-2. Criar branch de desenvolvimento protegida.
-3. Criar `ROADMAP.md`, `CHANGELOG.md`, `ARQUITETURA.md` e este roteiro.
-4. Registrar todas as telas existentes sem alterar a interface.
-5. Registrar todas as funções que funcionam localmente.
-6. Registrar funções parciais e funções simuladas.
-7. Registrar dados fictícios e dependências de `localStorage`.
-8. Definir o MVP comercial da primeira versão.
-9. Separar MVP de recursos futuros.
-10. Registrar dúvidas de negócio que impedem cálculos ou automações.
+2. Criar branch de desenvolvimento protegida. 🟡 Branch `develop`, fluxo PR-only e `CODEOWNERS` criados; ruleset de servidor registrado para a lista final.
+3. ~~Criar `ROADMAP.md`, `CHANGELOG.md`, `ARQUITETURA.md` e este roteiro.~~ ✅ Aprovado em 24/07/2026.
+4. ~~Registrar todas as telas existentes sem alterar a interface.~~ ✅ Aprovado em 24/07/2026.
+5. ~~Registrar todas as funções que funcionam localmente.~~ ✅ Aprovado em 24/07/2026.
+6. ~~Registrar funções parciais e funções simuladas.~~ ✅ Aprovado em 24/07/2026.
+7. ~~Registrar dados fictícios e dependências de `localStorage`.~~ ✅ Aprovado em 24/07/2026.
+8. ~~Definir o MVP comercial da primeira versão.~~ ✅ Aprovado em 24/07/2026.
+9. ~~Separar MVP de recursos futuros.~~ ✅ Aprovado em 24/07/2026.
+10. ~~Registrar dúvidas de negócio que impedem cálculos ou automações.~~ ✅ Aprovado em 24/07/2026.
 
-Marco A: protótipo preservado e escopo congelado.
+Marco A: aprovado em 24/07/2026, com a aplicação do ruleset de servidor mantida na lista final de pendências externas.
 
 ### Bloco B - Primeiras conexões usando as contas reais do proprietário
 
@@ -409,7 +409,7 @@ O início operacional será:
 
 | Marco | Estado inicial |
 |---|---|
-| A - Escopo | Em andamento |
+| A - Escopo | Aprovado; ruleset final pendente |
 | B - Conexões de teste | Pendente |
 | C - Fundação | Pendente |
 | D - Banco | Pendente |
