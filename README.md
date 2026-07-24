@@ -10,6 +10,7 @@ SaaS profissional para gestão de clientes, propostas, empréstimos, parcelas, p
 - domínio e integrações separados;
 - banco multiempresa, RLS e permissões preparados por migrações;
 - testes de isolamento, dados fictícios e roteiro de restauração versionados;
+- fluxo de clientes implementado no domínio e na camada de aplicação;
 - testes, lint, tipos, build e CI configurados;
 - conexões externas reunidas em `docs/PENDENCIAS_FINAIS.md`.
 
