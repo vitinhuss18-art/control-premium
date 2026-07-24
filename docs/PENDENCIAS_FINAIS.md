@@ -26,7 +26,11 @@ Este arquivo reúne somente ações que o Codex não pode concluir sem uma conta
 ## Infraestrutura
 
 - registrar ou conectar o domínio;
-- conectar Supabase, hospedagem e provedor de e-mail;
+- conectar um projeto Supabase por titular elegível ou responsável autorizado;
+- aplicar as migrações versionadas e executar o teste real de isolamento multiempresa;
+- configurar e-mail/SMS de confirmação, recuperação de senha, sessões e MFA no Supabase Auth;
+- executar e comprovar um teste real de backup e restauração em ambiente isolado;
+- conectar hospedagem e provedor de e-mail;
 - cadastrar variáveis protegidas nos ambientes;
 - aprovar custos que não possam operar no plano gratuito.
 

@@ -38,6 +38,16 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Pipeline de integração contínua para `main`, `develop` e pull requests.
 - Endpoint de saúde e logger com remoção de campos sensíveis.
 
+### Banco e acesso
+
+- Modelo completo para clientes, propostas, empréstimos, parcelas, pagamentos, cobranças, contratos, PIX, webhooks e assinatura SaaS.
+- Chaves estrangeiras compostas que impedem relações cruzadas entre empresas.
+- RLS e funções de autorização para Super Admin, Administrador, Gestor, Operador, Cobrador e Cliente.
+- Cadastro inicial seguro de empresa e aceite de convite por token armazenado somente como hash.
+- Registro de eventos de autenticação e exigência de MFA para funções administrativas.
+- Dados fictícios, teste de isolamento multiempresa e roteiro de backup/restauração.
+- Matriz de permissões compartilhada pelo domínio TypeScript e pelo banco.
+
 ### Segurança
 
 - Proibição explícita de segredos no código e na documentação.
