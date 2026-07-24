@@ -48,6 +48,15 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Dados fictícios, teste de isolamento multiempresa e roteiro de backup/restauração.
 - Matriz de permissões compartilhada pelo domínio TypeScript e pelo banco.
 
+### Fluxo de clientes
+
+- Validação e normalização de nome, CPF opcional, telefone, e-mail e nascimento.
+- Serviço de aplicação para cadastrar, pesquisar, visualizar, editar e arquivar clientes.
+- Prevenção de CPF duplicado dentro da mesma empresa.
+- Porta de documentos com limite de 10 MB e caminho privado por empresa/cliente.
+- Auditoria obrigatória para cadastro, edição, arquivamento e documento.
+- Testes de permissões, duplicidade e isolamento entre empresas.
+
 ### Segurança
 
 - Proibição explícita de segredos no código e na documentação.
