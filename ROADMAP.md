@@ -1,81 +1,45 @@
-# Roadmap - Control Premium
+# Roadmap executivo — Control Premium
 
-Este roadmap segue o Plano Mestre e preserva o protótipo atual como referência oficial de interface.
-Uma fase só pode ser concluída com evidência verificável: código, teste, tela validada ou documento aprovado.
+Atualizado em: 24/07/2026  
+Fonte detalhada: [`docs/ROTEIRO_EXECUCAO_CONTROL_PREMIUM.md`](docs/ROTEIRO_EXECUCAO_CONTROL_PREMIUM.md)
 
-## Fase 1 - Diagnóstico e escopo
+## Objetivo
 
-- [x] Preservar o protótipo oficial.
-- [x] Auditar telas, funções e armazenamento.
-- [x] Classificar recursos como funcionais, parciais ou simulados.
-- [x] Definir arquitetura inicial e prioridades.
-- [ ] Aprovar regras de negócio ainda indefinidas.
+Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iPhone, preservando a interface e substituindo simulações por serviços reais, seguros e auditáveis.
 
-Critério de saída: escopo do MVP aprovado.
+## Regras de execução
 
-## Fase 2 - Fundação técnica
+- A interface aprovada não será redesenhada sem autorização explícita.
+- Cada mudança será feita em branch própria e revisada por pull request.
+- Nenhuma senha, token, chave PIX, certificado ou segredo será incluído no repositório.
+- PIX e WhatsApp usarão contas reais e verificadas do proprietário; os primeiros testes serão limitados à homologação do provedor e a destinatários autorizados.
+- Recursos financeiros não entrarão em produção sem regras aprovadas, idempotência, auditoria e testes determinísticos.
+- A IA nunca decidirá crédito sozinha.
 
-- [x] Definir Next.js, TypeScript, PostgreSQL e Supabase como stack inicial.
-- [x] Criar modelo inicial de banco versionado.
-- [x] Criar padrão de variáveis de ambiente sem segredos.
-- [x] Documentar arquitetura e execução.
-- [ ] Criar aplicação Next.js preservando a identidade visual.
-- [ ] Configurar lint, formatação, testes e integração contínua.
+## Marcos
 
-Critério de saída: frontend, API e banco executando em desenvolvimento.
+| Bloco | Entrega | Estado |
+|---|---|---|
+| A | Proteção do projeto, inventário e escopo congelado | Aprovado; ruleset final pendente |
+| B | Contas reais de PIX e WhatsApp conectadas e validadas | Pendente |
+| C | Fundação Next.js/TypeScript/Supabase | Pendente |
+| D | Banco multiempresa e RLS | Pendente |
+| E | Autenticação e permissões | Pendente |
+| F | Interface migrada fielmente | Pendente |
+| G | Primeiro fluxo real de clientes | Pendente |
+| H | Cadastro por link e WhatsApp | Pendente |
+| I | Propostas e análise | Pendente |
+| J | Núcleo financeiro | Pendente |
+| K | Contratos e assinatura | Pendente |
+| L | PIX e conciliação | Pendente |
+| M | Cobrança por WhatsApp | Pendente |
+| N | Dashboard, relatórios e portal | Pendente |
+| O | Assinatura do SaaS | Pendente |
+| P | IA responsável | Pendente |
+| Q | Segurança, LGPD e qualidade | Pendente |
+| R | Aplicativos Android e iPhone | Pendente |
+| S | Produção, lançamento e operação | Pendente |
 
-## Fase 3 - Autenticação e multiempresa
+## Próximo marco
 
-- [ ] Configurar Supabase Auth.
-- [ ] Implementar cadastro de empresa e usuário administrador.
-- [ ] Implementar perfis e permissões.
-- [ ] Aplicar isolamento por `tenant_id`.
-- [ ] Testar que uma empresa não acessa dados de outra.
-
-Critério de saída: autenticação e isolamento multiempresa testados.
-
-## Fase 4 - Primeiro fluxo vertical
-
-- [ ] Migrar login e dashboard sem alterar o design aprovado.
-- [ ] Migrar cadastro, edição, pesquisa e arquivamento de clientes.
-- [ ] Salvar clientes no PostgreSQL.
-- [ ] Prevenir cadastros duplicados dentro da empresa.
-- [ ] Registrar eventos críticos em auditoria.
-- [ ] Testar o fluxo no celular e no computador.
-
-Critério de saída: cliente persistido e isolado por empresa.
-
-## Fase 5 - Núcleo financeiro
-
-- [ ] Implementar propostas e aprovação registrada.
-- [ ] Aprovar formalmente métodos de cálculo e arredondamento.
-- [ ] Implementar empréstimos e cronogramas de parcelas.
-- [ ] Implementar pagamentos totais e parciais.
-- [ ] Implementar saldo devedor, atraso, estorno e quitação.
-- [ ] Criar testes determinísticos para valores e datas.
-
-Critério de saída: cálculos financeiros revisados e cobertos por testes.
-
-## Fases posteriores
-
-- [ ] Contratos e assinatura eletrônica.
-- [ ] PIX com webhook autenticado e idempotência.
-- [ ] Comunicação oficial e auditável.
-- [ ] Dashboards e relatórios validados contra o banco.
-- [ ] Painel seguro do cliente.
-- [ ] Planos de assinatura do SaaS.
-- [ ] IA responsável com revisão humana.
-- [ ] Segurança, LGPD, backup e resposta a incidentes.
-- [ ] Aplicativo móvel após estabilização da API.
-- [ ] Piloto controlado e lançamento gradual.
-
-## Decisões pendentes
-
-1. Métodos de juros e amortização permitidos.
-2. Regras de arredondamento.
-3. Tratamento de finais de semana e feriados.
-4. Regras de multa, atraso, pagamento parcial e quitação antecipada.
-5. Perfis autorizados a aprovar, estornar e renegociar.
-6. Provedores de assinatura eletrônica, PIX e WhatsApp.
-7. Política de comunicação e horários permitidos.
-
+Após a aprovação do Bloco A, iniciar o Bloco B com a seleção dos provedores oficiais de PIX e WhatsApp. As conexões que exigirem identidade, aceite contratual ou credenciais serão realizadas pelo titular em painel protegido.
