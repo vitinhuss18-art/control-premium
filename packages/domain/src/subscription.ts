@@ -10,15 +10,14 @@ export type SaaSPlan = Readonly<{
   id: string;
   name: string;
   monthlyPriceCents: number;
-  limits: Readonly<Record<Exclude<SaaSFeature, "ai_assistance" | "reports">, number>>;
+  limits: Readonly<
+    Record<Exclude<SaaSFeature, "ai_assistance" | "reports">, number>
+  >;
   features: readonly SaaSFeature[];
 }>;
 
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "cancelled";
+  "trialing" | "active" | "past_due" | "cancelled";
 
 export type TenantSubscription = Readonly<{
   tenantId: string;
@@ -62,17 +61,14 @@ export function hasSubscriptionAccess(
   subscription: TenantSubscription,
   at: Date,
 ): boolean {
-  if (
-    subscription.status === "active" ||
-    subscription.status === "trialing"
-  ) {
+  if (subscription.status === "active" || subscription.status === "trialing") {
     return true;
   }
   return (
     subscription.status === "past_due" &&
     Boolean(
       subscription.graceUntil &&
-        new Date(subscription.graceUntil).getTime() > at.getTime(),
+      new Date(subscription.graceUntil).getTime() > at.getTime(),
     )
   );
 }

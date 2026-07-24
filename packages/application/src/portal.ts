@@ -1,4 +1,7 @@
-import { assertTenantAccess, calculateOutstandingCents } from "@control-premium/domain";
+import {
+  assertTenantAccess,
+  calculateOutstandingCents,
+} from "@control-premium/domain";
 
 import type { ContractRecord } from "./contracts";
 import type { LoanRecord } from "./loans";

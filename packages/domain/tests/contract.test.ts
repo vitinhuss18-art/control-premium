@@ -19,10 +19,7 @@ describe("contract domain", () => {
       { "client.name": "Cliente Teste", "loan.total": "R$ 1.100,00" },
     );
 
-    assert.equal(
-      rendered.content,
-      "Cliente Cliente Teste, total R$ 1.100,00.",
-    );
+    assert.equal(rendered.content, "Cliente Cliente Teste, total R$ 1.100,00.");
     assert.equal(rendered.templateVersion, 2);
   });
 

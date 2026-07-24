@@ -77,8 +77,7 @@ class MemoryLoans implements LoanRepository {
       idempotencyKey: input.idempotencyKey,
       amountCents: input.amountCents,
       allocations: allocation.allocations,
-      receiptNumber:
-        "R-" + String(this.receiptSequence).padStart(8, "0"),
+      receiptNumber: "R-" + String(this.receiptSequence).padStart(8, "0"),
       status: "confirmed",
       paidAt: input.paidAt,
       createdBy: input.actorId,
@@ -213,7 +212,10 @@ describe("LoanService", () => {
 
     assert.equal(first.id, second.id);
     assert.equal(first.contractedTotalCents, 110_000);
-    assert.equal(audit.events.filter((e) => e.action === "loan.created").length, 1);
+    assert.equal(
+      audit.events.filter((e) => e.action === "loan.created").length,
+      1,
+    );
   });
 
   it("registra pagamento idempotente com recibo numerado", async () => {
@@ -268,7 +270,10 @@ describe("LoanService", () => {
     );
 
     assert.equal(reversed.payment.status, "reversed");
-    assert.equal(calculateOutstandingCents(reversed.loan.installments), 110_000);
+    assert.equal(
+      calculateOutstandingCents(reversed.loan.installments),
+      110_000,
+    );
     assert.equal(audit.events.at(-1)?.action, "loan.payment.reversed");
   });
 

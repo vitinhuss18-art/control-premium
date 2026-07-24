@@ -61,17 +61,11 @@ describe("subscription domain", () => {
       graceUntil: "2026-07-30T00:00:00.000Z",
     };
     assert.equal(
-      hasSubscriptionAccess(
-        subscription,
-        new Date("2026-07-24T00:00:00.000Z"),
-      ),
+      hasSubscriptionAccess(subscription, new Date("2026-07-24T00:00:00.000Z")),
       true,
     );
     assert.equal(
-      hasSubscriptionAccess(
-        subscription,
-        new Date("2026-07-31T00:00:00.000Z"),
-      ),
+      hasSubscriptionAccess(subscription, new Date("2026-07-31T00:00:00.000Z")),
       false,
     );
   });

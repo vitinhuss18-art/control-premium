@@ -74,9 +74,6 @@ describe("privacy and retention", () => {
       id: "client-1",
       fullName: "Titular anonimizado anon_12345678",
     });
-    assert.throws(
-      () => anonymizeClient(anonymized, "bad"),
-      PrivacyPolicyError,
-    );
+    assert.throws(() => anonymizeClient(anonymized, "bad"), PrivacyPolicyError);
   });
 });

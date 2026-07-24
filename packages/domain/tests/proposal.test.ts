@@ -101,22 +101,16 @@ describe("proposal checklist", () => {
     const checklist = createProposalChecklist();
     assert.equal(isProposalChecklistComplete(checklist), false);
 
-    const verified = checklist.map(
-      (item): ProposalChecklistItem => ({
-        ...item,
-        status: "verified",
-        verifiedBy: "reviewer-1",
-        verifiedAt: "2026-07-24T12:00:00.000Z",
-      }),
-    );
+    const verified = checklist.map((item): ProposalChecklistItem => ({
+      ...item,
+      status: "verified",
+      verifiedBy: "reviewer-1",
+      verifiedAt: "2026-07-24T12:00:00.000Z",
+    }));
     assert.equal(isProposalChecklistComplete(verified), true);
 
     assert.throws(
-      () =>
-        validateProposalChecklist([
-          ...verified,
-          { ...verified[0]! },
-        ]),
+      () => validateProposalChecklist([...verified, { ...verified[0]! }]),
       ProposalValidationError,
     );
   });

@@ -233,8 +233,7 @@ export function assertFinancialConsistency(input: {
     (sum, installment) => sum + installment.paidCents,
     0,
   );
-  const netPaid =
-    input.confirmedPaymentCents - input.reversedPaymentCents;
+  const netPaid = input.confirmedPaymentCents - input.reversedPaymentCents;
 
   if (
     scheduled !== input.scheduledTotalCents ||

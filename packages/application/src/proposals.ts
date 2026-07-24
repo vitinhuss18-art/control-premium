@@ -137,11 +137,7 @@ function normalizePurposeDetails(
   return normalized || undefined;
 }
 
-function parseFutureInstant(
-  value: string,
-  now: Date,
-  field: string,
-): string {
+function parseFutureInstant(value: string, now: Date, field: string): string {
   const instant = new Date(value);
   if (Number.isNaN(instant.getTime()) || instant.getTime() <= now.getTime()) {
     throw new ProposalStateError(field + " deve indicar uma data futura.");
@@ -271,14 +267,10 @@ export class ProposalService {
       );
     }
 
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      {
-        checklist: validateProposalChecklist(checklist),
-        updatedAt: this.now().toISOString(),
-      },
-    );
+    const updated = await this.proposals.update(context.tenantId, proposal.id, {
+      checklist: validateProposalChecklist(checklist),
+      updatedAt: this.now().toISOString(),
+    });
     await this.writeAudit(context, proposal.id, "proposal.checklist.updated");
     return updated;
   }
@@ -301,11 +293,10 @@ export class ProposalService {
       );
     }
 
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      { status: "submitted", updatedAt: this.now().toISOString() },
-    );
+    const updated = await this.proposals.update(context.tenantId, proposal.id, {
+      status: "submitted",
+      updatedAt: this.now().toISOString(),
+    });
     await this.writeAudit(context, proposal.id, "proposal.submitted");
     return updated;
   }
@@ -317,10 +308,7 @@ export class ProposalService {
   ): Promise<ProposalRecord> {
     this.requirePermission(context.role, "approve");
     const proposal = await this.get(context, proposalId);
-    if (
-      proposal.status !== "submitted" &&
-      proposal.status !== "under_review"
-    ) {
+    if (proposal.status !== "submitted" && proposal.status !== "under_review") {
       throw new ProposalStateError(
         "A proposta precisa estar enviada ou em análise.",
       );
@@ -333,15 +321,11 @@ export class ProposalService {
       score: calculateExplainableCreditScore(input.score),
       reviewedAt: this.now().toISOString(),
     };
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      {
-        status: "under_review",
-        review,
-        updatedAt: this.now().toISOString(),
-      },
-    );
+    const updated = await this.proposals.update(context.tenantId, proposal.id, {
+      status: "under_review",
+      review,
+      updatedAt: this.now().toISOString(),
+    });
     await this.writeAudit(context, proposal.id, "proposal.reviewed", {
       score: review.score.value,
       riskBand: review.score.riskBand,
@@ -381,15 +365,11 @@ export class ProposalService {
       ...(reason ? { reason } : {}),
       decidedAt: this.now().toISOString(),
     };
-    const updated = await this.proposals.update(
-      context.tenantId,
-      proposal.id,
-      {
-        status: input.outcome,
-        decision,
-        updatedAt: this.now().toISOString(),
-      },
-    );
+    const updated = await this.proposals.update(context.tenantId, proposal.id, {
+      status: input.outcome,
+      decision,
+      updatedAt: this.now().toISOString(),
+    });
     await this.writeAudit(context, proposal.id, "proposal." + input.outcome, {
       reason: reason ?? null,
     });

@@ -154,10 +154,7 @@ function isBusinessDay(date: Date, holidays: ReadonlySet<string>): boolean {
   return day !== 0 && day !== 6 && !holidays.has(toIsoDate(date));
 }
 
-function nextBusinessDay(
-  date: Date,
-  holidays: ReadonlySet<string>,
-): Date {
+function nextBusinessDay(date: Date, holidays: ReadonlySet<string>): Date {
   let adjusted = new Date(date);
   while (!isBusinessDay(adjusted, holidays)) {
     adjusted = addUtcDays(adjusted, 1);
@@ -300,7 +297,9 @@ export function simulateProposal(
 
 export function createProposalChecklist(): readonly ProposalChecklistItem[] {
   return Object.freeze(
-    proposalDocumentTypes.map((type) => Object.freeze({ type, status: "missing" as const })),
+    proposalDocumentTypes.map((type) =>
+      Object.freeze({ type, status: "missing" as const }),
+    ),
   );
 }
 
@@ -320,10 +319,7 @@ export function validateProposalChecklist(
   }
 
   for (const item of items) {
-    if (
-      item.status === "verified" &&
-      (!item.verifiedBy || !item.verifiedAt)
-    ) {
+    if (item.status === "verified" && (!item.verifiedBy || !item.verifiedAt)) {
       throw new ProposalValidationError(
         "checklist",
         "Documentos verificados exigem responsável e horário.",
@@ -337,10 +333,8 @@ export function validateProposalChecklist(
 export function isProposalChecklistComplete(
   items: readonly ProposalChecklistItem[],
 ): boolean {
-  return (
-    validateProposalChecklist(items).every(
-      (item) => item.status === "verified",
-    )
+  return validateProposalChecklist(items).every(
+    (item) => item.status === "verified",
   );
 }
 

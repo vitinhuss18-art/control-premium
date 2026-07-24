@@ -22,7 +22,10 @@ describe("finance and compliance migration", () => {
       "enable row level security",
       "unique (tenant_id, idempotency_key)",
     ]) {
-      assert.match(sql, new RegExp(required.replaceAll("(", "\\(").replaceAll(")", "\\)")));
+      assert.match(
+        sql,
+        new RegExp(required.replaceAll("(", "\\(").replaceAll(")", "\\)")),
+      );
     }
     assert.match(sql, /revoke insert, update, delete/i);
   });

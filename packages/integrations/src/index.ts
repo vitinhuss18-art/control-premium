@@ -1,9 +1,5 @@
 export type PixChargeStatus =
-  | "pending"
-  | "paid"
-  | "expired"
-  | "refunded"
-  | "failed";
+  "pending" | "paid" | "expired" | "refunded" | "failed";
 
 export type PixCharge = Readonly<{
   providerChargeId: string;
@@ -43,11 +39,7 @@ export interface PixWebhookDecoder {
   decode(rawBody: string): VerifiedPixWebhook;
 }
 
-export type MessageStatus =
-  | "queued"
-  | "sent"
-  | "delivered"
-  | "failed";
+export type MessageStatus = "queued" | "sent" | "delivered" | "failed";
 
 export interface WhatsAppProvider {
   sendTemplate(input: {

@@ -125,11 +125,7 @@ describe("ProposalService", () => {
       ProposalStateError,
     );
 
-    await service.updateChecklist(
-      operator,
-      draft.id,
-      verifiedChecklist(draft),
-    );
+    await service.updateChecklist(operator, draft.id, verifiedChecklist(draft));
     await service.submit(operator, draft.id);
     await service.review(manager, draft.id, {
       opinion:
@@ -164,17 +160,12 @@ describe("ProposalService", () => {
 
   it("exige alçada configurada e permissão de aprovação", async () => {
     const draft = await createDraft(300_000);
-    await service.updateChecklist(
-      operator,
-      draft.id,
-      verifiedChecklist(draft),
-    );
+    await service.updateChecklist(operator, draft.id, verifiedChecklist(draft));
     await service.submit(operator, draft.id);
 
     await assert.rejects(
       service.review(operator, draft.id, {
-        opinion:
-          "Tentativa de parecer por usuário sem a permissão necessária.",
+        opinion: "Tentativa de parecer por usuário sem a permissão necessária.",
         score: {
           identityVerified: true,
           addressVerified: true,
@@ -187,8 +178,7 @@ describe("ProposalService", () => {
     );
 
     await service.review(manager, draft.id, {
-      opinion:
-        "Parecer humano concluído com documentação e renda verificadas.",
+      opinion: "Parecer humano concluído com documentação e renda verificadas.",
       score: {
         identityVerified: true,
         addressVerified: true,
@@ -205,11 +195,7 @@ describe("ProposalService", () => {
 
   it("recusa somente com motivo objetivo e mantém resumo rastreável", async () => {
     const draft = await createDraft();
-    await service.updateChecklist(
-      operator,
-      draft.id,
-      verifiedChecklist(draft),
-    );
+    await service.updateChecklist(operator, draft.id, verifiedChecklist(draft));
     await service.submit(operator, draft.id);
     await service.review(manager, draft.id, {
       opinion:
@@ -245,11 +231,7 @@ describe("ProposalService", () => {
 
   it("bloqueia proposta vencida", async () => {
     const draft = await createDraft();
-    await service.updateChecklist(
-      operator,
-      draft.id,
-      verifiedChecklist(draft),
-    );
+    await service.updateChecklist(operator, draft.id, verifiedChecklist(draft));
     currentTime = new Date("2026-08-25T00:00:00.000Z");
 
     await assert.rejects(service.submit(operator, draft.id), /vencida/);

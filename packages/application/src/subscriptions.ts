@@ -8,19 +8,14 @@ import {
   type TenantSubscription,
 } from "@control-premium/domain";
 
-import type {
-  ProposalActorContext,
-  ProposalAuditWriter,
-} from "./proposals";
+import type { ProposalActorContext, ProposalAuditWriter } from "./proposals";
 
 export type BillingEvent = Readonly<{
   id: string;
   tenantId: string;
   providerSubscriptionId: string;
   type:
-    | "subscription.active"
-    | "subscription.past_due"
-    | "subscription.canceled";
+    "subscription.active" | "subscription.past_due" | "subscription.canceled";
   planId: string;
   currentPeriodEnd: string;
   occurredAt: string;

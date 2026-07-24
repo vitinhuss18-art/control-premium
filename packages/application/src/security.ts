@@ -81,10 +81,7 @@ export class RateLimiter {
 const secretPattern =
   /token|secret|password|authorization|cookie|certificate|api[-_]?key/i;
 
-export function redactSecurityLog(
-  value: unknown,
-  depth = 0,
-): unknown {
+export function redactSecurityLog(value: unknown, depth = 0): unknown {
   if (depth > 10) return "[MAX_DEPTH]";
   if (Array.isArray(value)) {
     return value.map((item) => redactSecurityLog(item, depth + 1));

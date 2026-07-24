@@ -119,23 +119,15 @@ describe("AIAssistanceService", () => {
   });
 
   it("gera somente sugestão pendente de revisão humana", async () => {
-    const suggestion = await service.generate(
-      manager,
-      "portfolio_summary",
-      {
-        cpf: "52998224725",
-        receivedCents: 10_000,
-      },
-    );
+    const suggestion = await service.generate(manager, "portfolio_summary", {
+      cpf: "52998224725",
+      receivedCents: 10_000,
+    });
     assert.equal(suggestion.status, "pending_review");
     assert.match(provider.lastPrompt, /\[MASKED\]/);
     assert.doesNotMatch(provider.lastPrompt, /52998224725/);
 
-    const approved = await service.review(
-      manager,
-      suggestion.id,
-      "approved",
-    );
+    const approved = await service.review(manager, suggestion.id, "approved");
     assert.equal(approved.status, "approved");
     assert.equal(approved.reviewedBy, manager.userId);
   });

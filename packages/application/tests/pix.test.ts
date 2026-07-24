@@ -22,10 +22,7 @@ import type {
 class FakePixProvider implements PixProvider {
   validSignature = true;
   createCount = 0;
-  async createCharge(input: {
-    amountCents: number;
-    expiresAt: string;
-  }) {
+  async createCharge(input: { amountCents: number; expiresAt: string }) {
     this.createCount += 1;
     return {
       providerChargeId: "provider-charge-1",
@@ -75,10 +72,7 @@ class MemoryPixRepository implements PixChargeRepository {
     this.records.push(record);
     return record;
   }
-  async applyVerifiedEvent(
-    record: PixChargeRecord,
-    event: VerifiedPixWebhook,
-  ) {
+  async applyVerifiedEvent(record: PixChargeRecord, event: VerifiedPixWebhook) {
     const duplicate = this.eventIds.has(event.eventId);
     this.eventIds.add(event.eventId);
     if (duplicate) return { record, duplicate };

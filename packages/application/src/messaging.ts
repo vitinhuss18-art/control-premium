@@ -1,10 +1,7 @@
 import { hasPermission } from "@control-premium/domain";
 import type { WhatsAppProvider } from "@control-premium/integrations";
 
-import type {
-  ProposalActorContext,
-  ProposalAuditWriter,
-} from "./proposals";
+import type { ProposalActorContext, ProposalAuditWriter } from "./proposals";
 
 export type MessageCategory =
   | "registration"
@@ -189,9 +186,7 @@ export class MessagingService {
     quota: MessagingQuota,
     audit: ProposalAuditWriter,
     policy: MessagingWindowPolicy,
-    approvedTemplates: Readonly<
-      Record<MessageCategory, readonly string[]>
-    >,
+    approvedTemplates: Readonly<Record<MessageCategory, readonly string[]>>,
     createId: () => string,
     now: () => Date = () => new Date(),
   ) {
@@ -228,9 +223,7 @@ export class MessagingService {
     if (existing) return existing;
 
     const recipient = normalizeRecipient(input.recipient);
-    if (
-      !this.approvedTemplates[input.category]?.includes(input.templateName)
-    ) {
+    if (!this.approvedTemplates[input.category]?.includes(input.templateName)) {
       throw new MessagingPolicyError(
         "Use somente um template oficial aprovado para esta finalidade.",
       );
@@ -294,15 +287,11 @@ export class MessagingService {
         templateName: record.templateName,
         variables: record.variables,
       });
-      const updated = await this.repository.update(
-        record.tenantId,
-        record.id,
-        {
-          status: sent.status === "failed" ? "failed" : "sent",
-          providerMessageId: sent.providerMessageId,
-          attempts: record.attempts + 1,
-        },
-      );
+      const updated = await this.repository.update(record.tenantId, record.id, {
+        status: sent.status === "failed" ? "failed" : "sent",
+        providerMessageId: sent.providerMessageId,
+        attempts: record.attempts + 1,
+      });
       await this.writeAudit(
         {
           tenantId: record.tenantId,

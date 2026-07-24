@@ -52,10 +52,9 @@ describe("security policies", () => {
 
   it("aceita somente retorno HTTPS para origem permitida", () => {
     assert.equal(
-      assertSafeRedirect(
-        "https://app.controlpremium.test/return",
-        ["https://app.controlpremium.test"],
-      ).pathname,
+      assertSafeRedirect("https://app.controlpremium.test/return", [
+        "https://app.controlpremium.test",
+      ]).pathname,
       "/return",
     );
     assert.throws(

@@ -6,10 +6,7 @@ import type {
   VerifiedPixWebhook,
 } from "@control-premium/integrations";
 
-import type {
-  ProposalActorContext,
-  ProposalAuditWriter,
-} from "./proposals";
+import type { ProposalActorContext, ProposalAuditWriter } from "./proposals";
 
 export type PixChargeRecord = Readonly<{
   id: string;
@@ -83,10 +80,7 @@ function normalizeKey(value: string): string {
   return key;
 }
 
-function validateCharge(
-  charge: PixCharge,
-  expectedAmountCents: number,
-): void {
+function validateCharge(charge: PixCharge, expectedAmountCents: number): void {
   if (
     !charge.providerChargeId ||
     charge.amountCents !== expectedAmountCents ||
@@ -268,8 +262,7 @@ export class PixService {
     context: ProposalActorContext,
     action: "write" | "reverse",
   ): void {
-    const permission =
-      action === "write" ? "finance.write" : "finance.reverse";
+    const permission = action === "write" ? "finance.write" : "finance.reverse";
     if (!hasPermission(context.role, permission)) {
       throw new PixPermissionError();
     }

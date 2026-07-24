@@ -1,9 +1,6 @@
 import { hasPermission } from "@control-premium/domain";
 
-import type {
-  ProposalActorContext,
-  ProposalAuditWriter,
-} from "./proposals";
+import type { ProposalActorContext, ProposalAuditWriter } from "./proposals";
 
 export type AIAssistanceTask =
   | "message_draft"
@@ -97,7 +94,10 @@ export function detectPromptInjection(value: string): readonly string[] {
     ["ignore_instructions", /ignore (all|previous|prior) instructions/i],
     ["ignore_instructions_pt", /ignore (todas|as) instru[cç][oõ]es/i],
     ["system_prompt", /(system prompt|prompt do sistema)/i],
-    ["secret_exfiltration", /(reveal|mostre|exiba).*(token|secret|senha|chave)/i],
+    [
+      "secret_exfiltration",
+      /(reveal|mostre|exiba).*(token|secret|senha|chave)/i,
+    ],
   ];
   for (const [code, pattern] of patterns) {
     if (pattern.test(value)) flags.push(code);
@@ -194,7 +194,8 @@ export class AIAssistanceService {
       throw new AIPolicyError("A geração ultrapassaria o limite mensal de IA.");
     }
     const output = generated.text.trim();
-    if (!output) throw new AIPolicyError("O provedor retornou uma saída vazia.");
+    if (!output)
+      throw new AIPolicyError("O provedor retornou uma saída vazia.");
     const outputFlags = detectPromptInjection(output);
     const suggestion = await this.suggestions.create({
       id: this.createId(),

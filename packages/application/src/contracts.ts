@@ -8,10 +8,7 @@ import {
 } from "@control-premium/domain";
 
 import type { LoanRecord } from "./loans";
-import type {
-  ProposalActorContext,
-  ProposalAuditWriter,
-} from "./proposals";
+import type { ProposalActorContext, ProposalAuditWriter } from "./proposals";
 
 export type ContractDocument = Readonly<{
   path: string;
@@ -221,14 +218,10 @@ export class ContractService {
         "O provedor não retornou um envelope de assinatura.",
       );
     }
-    const updated = await this.contracts.update(
-      context.tenantId,
-      contractId,
-      {
-        status: "sent",
-        signatureEnvelopeId: envelope.envelopeId,
-      },
-    );
+    const updated = await this.contracts.update(context.tenantId, contractId, {
+      status: "sent",
+      signatureEnvelopeId: envelope.envelopeId,
+    });
     await this.writeAudit(context, contractId, "contract.signature.requested", {
       envelopeId: envelope.envelopeId,
       signerCount: signers.length,
@@ -243,16 +236,12 @@ export class ContractService {
   ): Promise<ContractRecord> {
     this.requireWrite(context.role);
     const contract = await this.get(context, contractId);
-    if (
-      contract.status !== "sent" ||
-      !contract.signatureEnvelopeId
-    ) {
+    if (contract.status !== "sent" || !contract.signatureEnvelopeId) {
       throw new ContractStateError(
         "O contrato não está aguardando assinatura.",
       );
     }
-    const completion =
-      await this.signatures.verifyCompletion(providerPayload);
+    const completion = await this.signatures.verifyCompletion(providerPayload);
     if (
       completion.envelopeId !== contract.signatureEnvelopeId ||
       completion.signedPdf.byteLength === 0 ||
@@ -276,15 +265,11 @@ export class ContractService {
       immutable: true,
     });
     const signedAt = this.now().toISOString();
-    const updated = await this.contracts.update(
-      context.tenantId,
-      contractId,
-      {
-        status: "signed",
-        signed: { path, sha256: stored.sha256, createdAt: signedAt },
-        signatureEvidence: Object.freeze([...completion.evidence]),
-      },
-    );
+    const updated = await this.contracts.update(context.tenantId, contractId, {
+      status: "signed",
+      signed: { path, sha256: stored.sha256, createdAt: signedAt },
+      signatureEvidence: Object.freeze([...completion.evidence]),
+    });
     await this.writeAudit(context, contractId, "contract.signed", {
       sha256: stored.sha256,
       evidenceCount: completion.evidence.length,

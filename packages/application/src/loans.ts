@@ -257,12 +257,14 @@ export class LoanService {
   async quoteEarlyPayoff(
     context: ProposalActorContext,
     loanId: string,
-  ): Promise<Readonly<{
-    loanId: string;
-    amountCents: number;
-    quotedAt: string;
-    expiresAt: string;
-  }>> {
+  ): Promise<
+    Readonly<{
+      loanId: string;
+      amountCents: number;
+      quotedAt: string;
+      expiresAt: string;
+    }>
+  > {
     const loan = await this.get(context, loanId);
     if (loan.status !== "active") {
       throw new LoanStateError("O empréstimo já está encerrado.");

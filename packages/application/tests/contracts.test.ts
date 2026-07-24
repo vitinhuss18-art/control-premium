@@ -169,7 +169,13 @@ describe("ContractService", () => {
       admin,
       contract.id,
       new TextEncoder().encode("%PDF"),
-      [{ id: "client-1", name: "Cliente Teste", contact: "cliente@test.invalid" }],
+      [
+        {
+          id: "client-1",
+          name: "Cliente Teste",
+          contact: "cliente@test.invalid",
+        },
+      ],
     );
     const signed = await service.completeSignature(admin, contract.id, {
       provider: "verified-payload",
@@ -190,20 +196,15 @@ describe("ContractService", () => {
   });
 
   it("cria aditivo somente sobre contrato assinado", async () => {
-    const parent = await service.createForLoan(
-      admin,
-      activeLoan(),
-      template,
-      { "client.name": "Cliente Teste", "loan.id": "loan-1" },
-    );
+    const parent = await service.createForLoan(admin, activeLoan(), template, {
+      "client.name": "Cliente Teste",
+      "loan.id": "loan-1",
+    });
     await assert.rejects(
-      service.createAddendum(
-        admin,
-        activeLoan(),
-        parent.id,
-        template,
-        { "client.name": "Cliente Teste", "loan.id": "loan-1" },
-      ),
+      service.createAddendum(admin, activeLoan(), parent.id, template, {
+        "client.name": "Cliente Teste",
+        "loan.id": "loan-1",
+      }),
       ContractStateError,
     );
   });

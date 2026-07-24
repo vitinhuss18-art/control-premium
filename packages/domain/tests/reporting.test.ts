@@ -66,7 +66,7 @@ describe("reporting", () => {
 
   it("exporta CSV e neutraliza fórmula", () => {
     const csv = exportPortfolioCsv([
-      { ...loans[0]!, clientId: "=HYPERLINK(\"evil\")" },
+      { ...loans[0]!, clientId: '=HYPERLINK("evil")' },
     ]);
     assert.match(csv, /'=HYPERLINK/);
     assert.match(csv, /"20000"/);
