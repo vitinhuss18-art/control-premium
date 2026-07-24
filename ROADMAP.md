@@ -12,7 +12,7 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 - A interface aprovada não será redesenhada sem autorização explícita.
 - Cada mudança será feita em branch própria e revisada por pull request.
 - Nenhuma senha, token, chave PIX, certificado ou segredo será incluído no repositório.
-- PIX e WhatsApp usarão contas reais e verificadas do proprietário; os primeiros testes serão limitados à homologação do provedor e a destinatários autorizados.
+- PIX e WhatsApp usarão contas reais e verificadas de titular elegível ou responsável legal autorizado; os primeiros testes serão limitados à homologação do provedor e a destinatários autorizados.
 - Recursos financeiros não entrarão em produção sem regras aprovadas, idempotência, auditoria e testes determinísticos.
 - A IA nunca decidirá crédito sozinha.
 
@@ -23,8 +23,8 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 | A | Proteção do projeto, inventário e escopo congelado | Aprovado; ruleset final pendente |
 | B | Contas reais de PIX e WhatsApp conectadas e validadas | Preparada; conexões finais pendentes |
 | C | Fundação Next.js/TypeScript/Supabase | Concluída tecnicamente |
-| D | Banco multiempresa e RLS | Pendente |
-| E | Autenticação e permissões | Pendente |
+| D | Banco multiempresa e RLS | Estrutura concluída; aplicação e teste no Supabase real pendentes |
+| E | Autenticação e permissões | Base técnica concluída; provedores de contato, MFA e testes reais pendentes |
 | F | Interface migrada fielmente | Pendente |
 | G | Primeiro fluxo real de clientes | Pendente |
 | H | Cadastro por link e WhatsApp | Pendente |
@@ -42,4 +42,4 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 
 ## Próximo marco
 
-Após a aprovação do Bloco A, iniciar o Bloco B com a seleção dos provedores oficiais de PIX e WhatsApp. As conexões que exigirem identidade, aceite contratual ou credenciais serão realizadas pelo titular em painel protegido.
+Continuar os fluxos internos do MVP sem alterar a interface. A aplicação das migrações, autenticação real, PIX e WhatsApp ficam concentrados no fechamento porque dependem de contas, painéis protegidos e titular elegível ou responsável autorizado.

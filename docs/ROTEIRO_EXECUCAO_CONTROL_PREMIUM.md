@@ -118,39 +118,39 @@ Marco C: concluído tecnicamente em 24/07/2026. Aplicação base compila e passa
 
 ### Bloco D - Banco multiempresa
 
-35. Criar diagrama de dados.
-36. Criar tabelas de empresas e usuários.
-37. Criar papéis e permissões.
-38. Criar clientes, contatos, endereços e documentos.
-39. Criar propostas, empréstimos, parcelas e pagamentos.
-40. Criar cobranças, renegociações e notificações.
-41. Criar contratos, arquivos, transações PIX e webhooks.
-42. Criar planos SaaS, assinaturas e limites.
-43. Criar logs de auditoria.
-44. Adicionar `tenant_id`, chaves estrangeiras, índices e integridade.
-45. Criar políticas RLS.
-46. Criar migrações e dados fictícios.
-47. Testar que a Empresa A não acessa a Empresa B.
-48. Testar backup e restauração.
+35. ~~Criar diagrama de dados.~~ ✅ Concluído em 24/07/2026.
+36. ~~Criar tabelas de empresas e usuários.~~ ✅ Concluído em 24/07/2026.
+37. ~~Criar papéis e permissões.~~ ✅ Concluído tecnicamente em 24/07/2026.
+38. ~~Criar clientes, contatos, endereços e documentos.~~ ✅ Concluído em 24/07/2026.
+39. ~~Criar propostas, empréstimos, parcelas e pagamentos.~~ ✅ Estrutura concluída; regras financeiras permanecem pendentes de decisão profissional.
+40. ~~Criar cobranças, renegociações e notificações.~~ ✅ Estrutura concluída em 24/07/2026.
+41. ~~Criar contratos, arquivos, transações PIX e webhooks.~~ ✅ Estrutura concluída em 24/07/2026.
+42. ~~Criar planos SaaS, assinaturas e limites.~~ ✅ Estrutura concluída; preços e limites finais permanecem pendentes.
+43. ~~Criar logs de auditoria.~~ ✅ Concluído em 24/07/2026.
+44. ~~Adicionar `tenant_id`, chaves estrangeiras, índices e integridade.~~ ✅ Concluído em 24/07/2026.
+45. ~~Criar políticas RLS.~~ ✅ Concluído tecnicamente em 24/07/2026.
+46. ~~Criar migrações e dados fictícios.~~ ✅ Concluído em 24/07/2026.
+47. Testar que a Empresa A não acessa a Empresa B. 🟡 Teste automatizado versionado; execução no Supabase real permanece na lista final.
+48. Testar backup e restauração. 🟡 Roteiro e critérios concluídos; execução real permanece na lista final.
 
-Marco D: banco migrável e isolamento comprovado.
+Marco D: estrutura do banco e testes versionados em 24/07/2026; aplicação das migrações, teste RLS e restauração reais permanecem na lista final.
 
 ### Bloco E - Autenticação e usuários
 
-49. Criar cadastro seguro da empresa.
+49. ~~Criar cadastro seguro da empresa.~~ ✅ Função transacional versionada; execução real depende do Supabase.
 50. Criar login por e-mail ou telefone e senha.
-51. Manter CPF somente como dado cadastral complementar.
+51. ~~Manter CPF somente como dado cadastral complementar.~~ ✅ Concluído em 24/07/2026.
 52. Criar confirmação de contato.
 53. Criar recuperação de senha.
 54. Criar sessão segura e encerramento de sessões.
-55. Criar Super Admin, Administrador, Gestor, Cobrador e Cliente.
-56. Proteger páginas, APIs e operações por permissão.
-57. Criar convite e desativação de membros.
-58. Criar MFA para funções administrativas.
-59. Auditar login, logout e tentativas inválidas.
-60. Testar todos os perfis e bloqueios.
+55. ~~Criar Super Admin, Administrador, Gestor, Operador, Cobrador e Cliente.~~ ✅ Concluído tecnicamente em 24/07/2026.
+56. Proteger páginas, APIs e operações por permissão. 🟡 Matriz, funções e RLS concluídos; proteção de rotas reais depende da ativação do login.
+57. ~~Criar convite e desativação de membros.~~ ✅ Estrutura e aceite seguro por token hash concluídos em 24/07/2026.
+58. Criar MFA para funções administrativas. 🟡 Exigência registrada; ativação do provedor permanece na lista final.
+59. Auditar login, logout e tentativas inválidas. 🟡 Tabela imutável concluída; alimentação pelos eventos reais depende do Supabase.
+60. Testar todos os perfis e bloqueios. 🟡 Testes unitários aprovados; testes reais permanecem na lista final.
 
-Marco E: autenticação real e permissões testadas.
+Marco E: base de autenticação e permissões concluída tecnicamente; conexão, confirmação, recuperação, sessões, MFA e testes reais permanecem na lista final.
 
 ### Bloco F - Migração fiel da interface
 
@@ -412,8 +412,8 @@ O início operacional será:
 | A - Escopo | Aprovado; ruleset final pendente |
 | B - Conexões de teste | Em preparação; variáveis PIX/WhatsApp concluídas |
 | C - Fundação | Concluído tecnicamente |
-| D - Banco | Pendente |
-| E - Autenticação | Pendente |
+| D - Banco | Estrutura concluída; testes reais pendentes |
+| E - Autenticação | Base técnica concluída; ativação real pendente |
 | F - Interface migrada | Pendente |
 | G - Fluxo de clientes | Pendente |
 | H - Cadastro WhatsApp | Pendente |
