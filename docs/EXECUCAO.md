@@ -51,6 +51,14 @@ Exemplo de caminho:
 <tenant_id>/clients/<client_id>/<document_id>.jpg
 ```
 
+Depois de conectar um projeto autorizado, aplicar as migrações na ordem do nome e executar:
+
+```text
+supabase/tests/tenant_isolation.sql
+```
+
+O arquivo `supabase/seed.sql` contém somente empresas e clientes fictícios. A execução real das migrações, autenticação, MFA e restauração permanece na lista final porque exige acesso ao painel protegido.
+
 ## Interface
 
 Enquanto a migração de componentes não estiver completa e comparada visualmente, a aplicação Next.js serve uma cópia byte a byte do protótipo oficial em um `iframe`. Isso permite modernizar a infraestrutura sem redesenhar a interface.
