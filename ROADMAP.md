@@ -26,7 +26,7 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 | D | Banco multiempresa e RLS | Estrutura concluída; aplicação e teste no Supabase real pendentes |
 | E | Autenticação e permissões | Base técnica concluída; provedores de contato, MFA e testes reais pendentes |
 | F | Interface migrada fielmente | Pendente |
-| G | Primeiro fluxo real de clientes | Pendente |
+| G | Primeiro fluxo real de clientes | Domínio concluído; persistência e teste real pendentes |
 | H | Cadastro por link e WhatsApp | Pendente |
 | I | Propostas e análise | Pendente |
 | J | Núcleo financeiro | Pendente |
