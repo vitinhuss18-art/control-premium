@@ -25,6 +25,19 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Escopo do MVP congelado para execução automática.
 - Pendências que exigem conta, identidade, contrato, credenciais ou decisão externa passam a ser reunidas para a etapa final.
 
+### Fundação técnica
+
+- Monorepo npm com `apps/web` e pacotes de UI, domínio, configuração e integrações.
+- Next.js 16, React 19 e TypeScript estrito.
+- Protótipo oficial servido sem alteração por uma camada Next.js.
+- Dinheiro representado em centavos inteiros no domínio.
+- Verificação de isolamento por empresa no domínio.
+- Contratos independentes para provedores PIX e WhatsApp.
+- Migração de Storage privado com RLS por empresa.
+- Formatação, lint, tipos, testes unitários, build e smoke test E2E.
+- Pipeline de integração contínua para `main`, `develop` e pull requests.
+- Endpoint de saúde e logger com remoção de campos sensíveis.
+
 ### Segurança
 
 - Proibição explícita de segredos no código e na documentação.

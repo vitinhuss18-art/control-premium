@@ -1,0 +1,2804 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control$ Premium</title>
+<style>
+  :root {
+    --bg: #0A0A0F;
+    --surface: #12121A;
+    --surface2: #1A1A2E;
+    --surface3: #252540;
+    --primary: #FFD700;
+    --secondary: #29B6F6;
+    --error: #FF5252;
+    --tertiary: #FFB300;
+    --purple: #B388FF;
+    --pink: #FF6B8A;
+    --gold: #FFD700;
+    --grey: #9E9E9E;
+    --grey2: #6A6A7A;
+    --divider: rgba(255,255,255,0.06);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 8px 40px rgba(0,0,0,0.6);
+    --shadow-glow: 0 0 40px rgba(255,215,0,0.15);
+    --transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0A0A0F;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    background-image: radial-gradient(ellipse at top left, rgba(255,215,0,0.03) 0%, transparent 50%),
+                      radial-gradient(ellipse at bottom right, rgba(179,136,255,0.03) 0%, transparent 50%);
+  }
+  .phone {
+    width: 390px;
+    max-width: 100%;
+    height: 820px;
+    background: var(--bg);
+    border-radius: 38px;
+    border: 2px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow), var(--shadow-glow);
+    display: flex;
+    flex-direction: column;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 40px;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.2), transparent 40%, transparent 60%, rgba(179,136,255,0.2));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 28px; background: #0A0A0F;
+    border-radius: 0 0 18px 18px; z-index: 10;
+    border: 2px solid rgba(255,255,255,0.06);
+    border-top: none;
+  }
+  .notch::after {
+    content: '';
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 10px; height: 10px; background: rgba(255,215,0,0.2);
+    border-radius: 50%; border: 1px solid rgba(255,215,0,0.1);
+  }
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 30px; z-index: 8;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: 12px; font-weight: 700; color: #fff;
+    letter-spacing: 0.2px; pointer-events: none;
+  }
+  .statusbar .sb-icons { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 66px; z-index: 9;
+    background: rgba(15,15,22,0.88); backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--divider);
+    display: none; align-items: center; justify-content: space-around;
+    padding-bottom: 4px;
+  }
+  .bottom-nav.show { display: flex; }
+  .bottom-nav .bn-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: none; border: none; cursor: pointer; color: var(--grey2);
+    font-size: 9px; font-weight: 700; padding: 6px 12px; border-radius: 12px;
+    transition: var(--transition); font-family: inherit;
+  }
+  .bottom-nav .bn-item .bn-ic { font-size: 18px; transition: var(--transition); }
+  .bottom-nav .bn-item.active { color: var(--gold); }
+  .bottom-nav .bn-item.active .bn-ic { transform: translateY(-3px); filter: drop-shadow(0 4px 8px rgba(255,215,0,0.4)); }
+  .bottom-nav .bn-item:active { transform: scale(0.92); }
+  .screen {
+    flex: 1; display: none; flex-direction: column; overflow-y: auto;
+    padding: 20px 18px 12px; padding-top: 44px;
+    scroll-behavior: smooth;
+  }
+  .screen.nav-space { padding-bottom: 80px; }
+  .screen.active { display: flex; animation: fadeSlide 0.4s ease; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCROLLBAR PREMIUM */
+  .screen::-webkit-scrollbar { width: 3px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+  .screen::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+  /* APP BAR PREMIUM */
+  .appbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px 16px; position: relative;
+  }
+  .appbar::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.2), transparent);
+  }
+  .appbar-title {
+    font-weight: 800; font-size: 17px;
+    background: linear-gradient(135deg, #fff 60%, var(--grey2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .appbar button {
+    background: none; border: none; color: var(--grey2); font-size: 19px;
+    cursor: pointer; padding: 6px; transition: var(--transition);
+    border-radius: 10px;
+  }
+  .appbar button:hover { color: #fff; background: var(--surface2); }
+  .appbar .menu-btn { font-size: 20px; }
+  .appbar .notif-btn { position: relative; }
+
+  .greeting {
+    font-size: 13px; color: var(--grey2); margin-bottom: 2px;
+    font-weight: 500;
+  }
+  .greeting-name {
+    font-size: 22px; font-weight: 800;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .role-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+  }
+  .role-tag {
+    font-weight: 700; font-size: 12px; padding: 4px 14px;
+    border-radius: 20px; background: rgba(255,215,0,0.1);
+    color: var(--primary); border: 1px solid rgba(255,215,0,0.15);
+  }
+  .role-tag.admin { background: rgba(179,136,255,0.12); color: var(--purple); border-color: rgba(179,136,255,0.2); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), #C9A227);
+    color: #000; border: none; border-radius: var(--radius);
+    padding: 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+    width: 100%; transition: var(--transition);
+    position: relative; overflow: hidden;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,215,0,0.3); }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  .btn-secondary {
+    background: var(--surface2); color: #fff; border: 1px solid var(--divider);
+    border-radius: var(--radius); padding: 14px; font-weight: 600;
+    font-size: 13px; cursor: pointer; width: 100%; transition: var(--transition);
+  }
+  .btn-secondary:hover { background: var(--surface3); border-color: var(--grey2); }
+
+  .btn-glow {
+    background: linear-gradient(135deg, var(--purple), #7C4DFF);
+    color: #fff; border: none; border-radius: var(--radius);
+    padding: 14px; font-weight: 700; font-size: 13px; cursor: pointer;
+    width: 100%; transition: var(--transition);
+    box-shadow: 0 4px 20px rgba(179,136,255,0.25);
+  }
+  .btn-glow:hover { transform: translateY(-2px); box-shadow: 0 8px 40px rgba(179,136,255,0.4); }
+
+  .card {
+    background: var(--surface); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 14px; border: 1px solid var(--divider);
+    transition: var(--transition);
+    backdrop-filter: blur(10px);
+  }
+  .card:hover { border-color: rgba(255,255,255,0.08); }
+
+  .card-glow {
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+    border: 1px solid rgba(255,215,0,0.08);
+    box-shadow: 0 4px 30px rgba(255,215,0,0.05);
+  }
+
+  .field {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--divider); border-radius: var(--radius);
+    padding: 14px 14px; color: var(--grey2); font-size: 14px;
+    margin-bottom: 16px; background: var(--surface); transition: var(--transition);
+  }
+  .field:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,215,0,0.08); }
+  .field input {
+    background: none; border: none; outline: none; color: #fff;
+    font-size: 14px; width: 100%;
+  }
+  .field input::placeholder { color: var(--grey2); }
+
+  .hint { color: var(--grey2); font-size: 11px; text-align: center; margin-top: 12px; }
+  .hint a { color: var(--primary); text-decoration: none; }
+
+  .kpi-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+  }
+  .kpi-mini {
+    background: var(--surface); border-radius: var(--radius); padding: 14px;
+    border: 1px solid var(--divider); transition: var(--transition);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .kpi-mini::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--primary), transparent);
+  }
+  .kpi-mini:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
+  .kpi-icon {
+    width: 36px; height: 36px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .kpi-icon.gold { background: rgba(255,215,0,0.12); }
+  .kpi-icon.green { background: rgba(255,215,0,0.12); }
+  .kpi-icon.blue { background: rgba(41,182,246,0.12); }
+  .kpi-icon.red { background: rgba(255,82,82,0.12); }
+  .kpi-mini .kpi-text { min-width: 0; }
+  .kpi-mini .lbl { color: var(--grey2); font-size: 9.5px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi-mini .val { font-size: 17px; font-weight: 800; white-space: nowrap; }
+  .kpi-mini .val.green { color: var(--primary); }
+  .kpi-mini .val.red { color: var(--error); }
+  .kpi-mini .val.blue { color: var(--secondary); }
+  .kpi-mini .val.gold { color: var(--gold); }
+  .kpi-mini .val.purple { color: var(--purple); }
+
+  .section-title {
+    font-size: 15px; font-weight: 800; margin: 20px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .badge-count {
+    font-size: 10px; font-weight: 700; background: var(--surface2);
+    padding: 2px 10px; border-radius: 12px; color: var(--grey2);
+  }
+
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin: 10px 0 4px; }
+  .chart .bar {
+    flex: 1; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--primary), rgba(255,215,0,0.3));
+    min-height: 8px; transition: height 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+  }
+  .chart .bar:hover { opacity: 0.8; }
+  .chart .bar .tooltip {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; color: var(--grey2); display: none;
+  }
+  .chart .bar:hover .tooltip { display: block; }
+  .chart-labels { display: flex; gap: 6px; }
+  .chart-labels span { flex: 1; text-align: center; color: var(--grey2); font-size: 9px; }
+
+  .table-head {
+    display: flex; color: var(--grey2); font-size: 10px; margin-bottom: 6px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .table-head span { flex: 1; }
+  .table-head span:last-child { text-align: right; }
+  .row-item {
+    display: flex; align-items: center; padding: 10px 0;
+    border-bottom: 1px solid var(--divider); transition: var(--transition);
+  }
+  .row-item:last-child { border-bottom: none; }
+  .row-item:hover { background: var(--surface); margin: 0 -8px; padding: 10px 8px; border-radius: 8px; }
+  .row-item .name-col { flex: 1.2; }
+  .row-item .name-col .n { font-weight: 700; font-size: 13px; }
+  .row-item .name-col .v { color: var(--grey2); font-size: 10px; }
+  .row-item .status-col { flex: 1; font-weight: 700; font-size: 12px; }
+  .row-item .action-col { flex: 1; text-align: right; }
+
+  .chip-btn {
+    border: none; border-radius: 8px; padding: 5px 12px;
+    font-size: 10px; font-weight: 700; cursor: pointer;
+    transition: var(--transition);
+  }
+  .chip-btn:hover { transform: scale(1.05); }
+
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--surface2), var(--surface3));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: var(--secondary);
+    flex-shrink: 0; border: 1px solid var(--divider);
+  }
+  .avatar-premium {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #000;
+  }
+
+  .badge {
+    font-size: 9px; font-weight: 700; padding: 3px 12px; border-radius: 12px;
+    white-space: nowrap; letter-spacing: 0.3px;
+  }
+  .badge.ok { background: rgba(255,215,0,0.12); color: var(--primary); }
+  .badge.late { background: rgba(255,82,82,0.12); color: var(--error); }
+  .badge.risk-low { background: rgba(255,215,0,0.12); color: var(--primary); }
+  .badge.risk-mid { background: rgba(255,179,0,0.12); color: var(--tertiary); }
+  .badge.risk-high { background: rgba(255,82,82,0.12); color: var(--error); }
+  .badge.purple { background: rgba(179,136,255,0.12); color: var(--purple); }
+  .badge.gold { background: rgba(255,215,0,0.12); color: var(--gold); }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; color: var(--grey2); font-size: 10px;
+    margin-bottom: 4px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-group input, .form-group select {
+    width: 100%; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: var(--radius-sm); padding: 11px 14px; color: #fff;
+    font-size: 13px; outline: none; transition: var(--transition);
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,215,0,0.06);
+  }
+
+  .debit-box {
+    background: linear-gradient(135deg, rgba(255,179,0,0.08), rgba(255,179,0,0.02));
+    border: 1.5px solid rgba(255,179,0,0.15); border-radius: var(--radius);
+    padding: 18px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+  }
+  .debit-box::before {
+    content: ''; position: absolute; top: -50%; right: -20%;
+    width: 100px; height: 100px; background: rgba(255,179,0,0.03);
+    border-radius: 50%;
+  }
+  .debit-box .lbl { color: var(--grey2); font-size: 11px; font-weight: 600; }
+  .debit-box .val { font-size: 28px; font-weight: 900; color: var(--gold); margin: 4px 0 2px; }
+  .debit-box .due { color: var(--grey2); font-size: 11px; }
+
+  .qr {
+    width: 120px; height: 120px; margin: 8px auto 14px; background: #fff;
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #000;
+    background-image:
+      repeating-linear-gradient(0deg,#000,#000 4px,#fff 4px,#fff 8px),
+      repeating-linear-gradient(90deg,#000,#000 4px,#fff 4px,#fff 8px);
+    background-blend-mode: multiply; opacity: 0.85;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .toast {
+    position: absolute; bottom: 96px; left: 16px; right: 16px;
+    background: var(--surface); border-radius: var(--radius); padding: 14px 18px;
+    font-size: 12px; box-shadow: var(--shadow); border: 1px solid var(--divider);
+    opacity: 0; transform: translateY(20px); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    pointer-events: none; z-index: 20; backdrop-filter: blur(20px);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+  .drawer {
+    position: absolute; top: 0; left: 0; bottom: 0; width: 280px;
+    max-width: 82%; background: var(--surface); z-index: 31;
+    transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex; flex-direction: column; border-right: 1px solid var(--divider);
+    backdrop-filter: blur(20px);
+  }
+  .drawer.show { transform: translateX(0); }
+  .drawer-head {
+    padding: 24px 20px 18px; border-bottom: 1px solid var(--divider);
+    background: linear-gradient(135deg, var(--surface), var(--surface2));
+  }
+  .drawer-head .nome { font-weight: 800; font-size: 16px; }
+  .drawer-head .perfil {
+    color: var(--primary); font-size: 11px; font-weight: 700;
+    margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .drawer-head .sub-text {
+    color: var(--grey2); font-size: 10px; margin-top: 4px;
+  }
+  .drawer-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .drawer-item {
+    display: flex; align-items: center; gap: 14px; padding: 13px 20px;
+    color: var(--grey2); font-size: 13px; cursor: pointer;
+    border-left: 3px solid transparent; transition: var(--transition);
+  }
+  .drawer-item .ic { font-size: 18px; width: 22px; text-align: center; }
+  .drawer-item:hover { background: var(--surface2); color: #fff; }
+  .drawer-item.active {
+    background: var(--surface2); border-left-color: var(--primary);
+    color: var(--primary); font-weight: 700;
+  }
+  .drawer-item .badge-drawer {
+    margin-left: auto; font-size: 9px; background: var(--surface2);
+    padding: 2px 8px; border-radius: 10px; color: var(--grey2);
+  }
+  .drawer-foot {
+    padding: 14px 20px 22px; border-top: 1px solid var(--divider);
+  }
+  .drawer-sair {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--error); font-size: 13px; font-weight: 700; cursor: pointer;
+    padding: 8px 12px; border-radius: 10px; transition: var(--transition);
+  }
+  .drawer-sair:hover { background: rgba(255,82,82,0.08); }
+
+  .drawer-right {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 280px;
+    max-width: 82%; background: var(--surface); z-index: 31;
+    transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex; flex-direction: column; border-left: 1px solid var(--divider);
+    backdrop-filter: blur(20px);
+  }
+  .drawer-right.show { transform: translateX(0); }
+  .notif-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 18px 16px; border-bottom: 1px solid var(--divider);
+  }
+  .notif-head .t { font-weight: 800; font-size: 15px; }
+  .notif-head .count { font-size: 11px; color: var(--grey2); }
+  .notif-head button { background: none; border: none; color: var(--grey2); font-size: 16px; cursor: pointer; padding: 4px; }
+  .notif-list { flex: 1; overflow-y: auto; padding: 4px 16px; }
+
+  .overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 30;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+
+  .notif-badge {
+    position: absolute; top: -1px; right: -1px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--error); display: none;
+    border: 2px solid var(--bg); animation: pulse-dot 1.5s infinite;
+  }
+  .notif-badge.show { display: block; }
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  /* FOGOS */
+  .fireworks-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999;
+  }
+  .firework {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    animation: explode 1.5s ease-out forwards;
+  }
+  @keyframes explode {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  .config-box {
+    background: var(--surface); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 16px; border: 1px solid var(--divider);
+  }
+
+  .login-icon {
+    text-align: center; font-size: 56px; margin-bottom: 8px;
+    display: block;
+    animation: float 3s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .brand-logo {
+    width: 88px; height: 88px; margin: 0 auto 14px;
+    border-radius: 24px; position: relative;
+    background: linear-gradient(145deg, #FFE580 0%, var(--gold) 45%, #B8860B 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 32px; letter-spacing: -1.5px;
+    color: #0A0A0F; font-family: -apple-system, 'Helvetica Neue', sans-serif;
+    box-shadow: 0 12px 40px rgba(255,215,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -6px 12px rgba(0,0,0,0.15);
+    animation: float 3s ease-in-out infinite;
+  }
+  .brand-logo::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 27px;
+    border: 1px solid rgba(255,215,0,0.35); pointer-events: none;
+  }
+  .brand-logo span { position: relative; top: -1px; }
+
+  .splash-screen {
+    justify-content: center; align-items: center; text-align: center;
+  }
+  .splash-logo {
+    width: 104px; height: 104px; font-size: 38px; margin-bottom: 22px;
+    animation: splashPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes splashPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 12px 40px rgba(255,215,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -6px 12px rgba(0,0,0,0.15); }
+    50% { transform: scale(1.06); box-shadow: 0 16px 55px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -6px 12px rgba(0,0,0,0.15); }
+  }
+  .splash-tagline {
+    color: var(--grey2); font-size: 12px; margin-bottom: 46px; letter-spacing: 0.3px;
+  }
+  .splash-loader {
+    width: 120px; height: 3px; border-radius: 3px; background: var(--surface2);
+    overflow: hidden;
+  }
+  .splash-loader-bar {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--gold), #fff5cc);
+    animation: splashLoad 1.7s cubic-bezier(0.4,0,0.2,1) forwards;
+  }
+  @keyframes splashLoad { from { width: 0%; } to { width: 100%; } }
+  .splash-fadeout { animation: splashFadeOut 0.5s ease forwards; }
+  @keyframes splashFadeOut { to { opacity: 0; transform: scale(0.97); } }
+  .login-title {
+    text-align: center; font-size: 30px; font-weight: 900;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .login-sub {
+    text-align: center; color: var(--grey2); font-size: 12px;
+    margin-bottom: 30px;
+  }
+
+  .status-badge {
+    display: inline-block; padding: 3px 12px; border-radius: 12px;
+    font-size: 9px; font-weight: 700;
+  }
+  .status-online { background: rgba(255,215,0,0.12); color: var(--primary); }
+  .status-offline { background: rgba(255,82,82,0.12); color: var(--error); }
+  .status-ia { background: rgba(179,136,255,0.12); color: var(--purple); }
+
+  .sheet-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    z-index: 40; display: flex; align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .sheet-overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    width: 100%; background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 20px 20px 24px; transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-top: 1px solid var(--divider);
+  }
+  .sheet-overlay.show .sheet { transform: translateY(0); }
+  .sheet .titulo { font-weight: 800; font-size: 15px; margin-bottom: 2px; }
+  .sheet .endereco { color: var(--grey2); font-size: 12px; margin-bottom: 16px; }
+  .sheet-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: var(--surface2); border: none; border-radius: 12px;
+    padding: 13px 16px; color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; margin-bottom: 10px; transition: var(--transition);
+  }
+  .sheet-btn:hover { background: var(--surface3); transform: translateX(4px); }
+
+  .btn-ir {
+    background: linear-gradient(135deg, var(--secondary), #0288D1);
+    color: #fff; border: none; border-radius: 8px; padding: 5px 12px;
+    font-size: 10px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  }
+  .btn-ir:hover { transform: scale(1.05); }
+
+  .search-box {
+    display: flex; align-items: center; gap: 10px; background: var(--surface);
+    border-radius: var(--radius); padding: 11px 14px; margin-bottom: 14px;
+    border: 1px solid var(--divider); transition: var(--transition);
+  }
+  .search-box:focus-within { border-color: var(--primary); }
+  .search-box input {
+    background: none; border: none; outline: none; color: #fff;
+    font-size: 12px; width: 100%;
+  }
+  .search-box input::placeholder { color: var(--grey2); }
+
+  .admin-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--divider);
+    transition: var(--transition);
+  }
+  .admin-list-item:hover { padding-left: 4px; }
+  .admin-list-item .n { font-weight: 700; font-size: 13px; }
+  .admin-list-item .s { color: var(--grey2); font-size: 10.5px; }
+
+  .toggle {
+    width: 38px; height: 22px; border-radius: 12px; background: #333;
+    position: relative; cursor: pointer; flex-shrink: 0;
+    transition: background 0.3s; border: 1px solid var(--divider);
+  }
+  .toggle.on { background: var(--primary); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    transition: left 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { left: 18px; }
+
+  .fab {
+    position: absolute; bottom: 78px; right: 18px; width: 50px; height: 50px;
+    border-radius: 50%; background: linear-gradient(135deg, var(--primary), #C9A227);
+    color: #000; border: none; font-size: 24px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 6px 30px rgba(255,215,0,0.35); z-index: 5;
+    transition: var(--transition);
+  }
+  .fab:hover { transform: scale(1.08) rotate(90deg); }
+
+  .ia-box {
+    background: linear-gradient(135deg, rgba(179,136,255,0.06), rgba(179,136,255,0.02));
+    border: 1px solid rgba(179,136,255,0.12); border-radius: var(--radius);
+    padding: 16px; transition: var(--transition);
+  }
+  .ia-box:hover { border-color: rgba(179,136,255,0.2); }
+  .ia-box .head {
+    display: flex; align-items: center; gap: 10px; font-weight: 700;
+    font-size: 14px; margin-bottom: 6px; color: var(--purple);
+  }
+  .ia-box p { color: var(--grey2); font-size: 11.5px; margin: 0; }
+
+  .agenda-day { margin-bottom: 16px; }
+  .agenda-day .d {
+    color: var(--grey2); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;
+  }
+  .agenda-item {
+    display: flex; align-items: center; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid var(--divider); transition: var(--transition);
+  }
+  .agenda-item:hover { padding-left: 4px; }
+  .agenda-item .dot2 {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .agenda-item .info { flex: 1; }
+  .agenda-item .n { font-weight: 700; font-size: 13px; }
+  .agenda-item .s { color: var(--grey2); font-size: 10px; }
+  .agenda-item .amt { font-weight: 800; font-size: 12px; }
+
+  .suggest-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .suggest-chip {
+    border: 1px solid var(--divider); border-radius: 14px; padding: 5px 14px;
+    font-size: 10px; color: var(--grey2); cursor: pointer;
+    transition: var(--transition);
+  }
+  .suggest-chip:hover { border-color: var(--primary); color: var(--primary); background: rgba(255,215,0,0.05); }
+
+  .chat-scroll {
+    flex: 1; display: flex; flex-direction: column; gap: 10px;
+    padding-bottom: 10px; max-height: 400px; overflow-y: auto;
+  }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 12px; line-height: 1.5; }
+  .msg.user {
+    align-self: flex-end; background: linear-gradient(135deg, var(--primary), #C9A227);
+    color: #000; border-bottom-right-radius: 4px;
+  }
+  .msg.bot {
+    align-self: flex-start; background: var(--surface); color: #fff;
+    border-bottom-left-radius: 4px; border: 1px solid var(--divider);
+  }
+  .msg.bot .tag {
+    color: var(--purple); font-weight: 700; font-size: 10px;
+    display: block; margin-bottom: 4px;
+  }
+  .chat-input-row {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .chat-input-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--divider);
+    border-radius: 20px; padding: 11px 16px; color: #fff;
+    font-size: 12px; outline: none; transition: var(--transition);
+  }
+  .chat-input-row input:focus { border-color: var(--primary); }
+  .chat-input-row button {
+    background: linear-gradient(135deg, var(--primary), #C9A227);
+    color: #000; border: none; border-radius: 50%; width: 42px; height: 42px;
+    font-weight: 800; cursor: pointer; flex-shrink: 0; transition: var(--transition);
+  }
+  .chat-input-row button:hover { transform: scale(1.05); }
+
+  .chips-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip-select {
+    border: 1px solid var(--divider); border-radius: 20px; padding: 5px 14px;
+    font-size: 10.5px; color: var(--grey2); cursor: pointer; transition: var(--transition);
+  }
+  .chip-select.on {
+    background: rgba(255,215,0,0.1); border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .client-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--divider); transition: var(--transition);
+  }
+  .client-item:hover { padding-left: 4px; }
+  .client-item .info { flex: 1; }
+  .client-item .n { font-weight: 700; font-size: 13px; }
+  .client-item .s { color: var(--grey2); font-size: 10.5px; }
+
+  .btn-pix {
+    background: linear-gradient(135deg, var(--primary), #C9A227);
+    color: #000; border: none; border-radius: var(--radius);
+    padding: 14px; font-weight: 700; font-size: 12px; width: 100%; cursor: pointer;
+    transition: var(--transition);
+  }
+  .btn-pix:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255,215,0,0.3); }
+
+  .legend {
+    display: none;
+  }
+
+  /* PERSONALIZAÇÃO DO NOME */
+  .name-edit {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .name-edit input {
+    background: var(--surface); border: 1px solid var(--divider);
+    border-radius: var(--radius-sm); padding: 8px 12px;
+    color: #fff; font-size: 13px; outline: none; flex: 1;
+    transition: var(--transition);
+  }
+  .name-edit input:focus { border-color: var(--primary); }
+  .name-edit button {
+    background: var(--primary); color: #000; border: none;
+    border-radius: var(--radius-sm); padding: 8px 14px;
+    font-weight: 700; font-size: 11px; cursor: pointer;
+    transition: var(--transition);
+  }
+  .name-edit button:hover { transform: scale(1.05); }
+
+  .admin-name-display {
+    font-size: 20px; font-weight: 800;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* EFEITO PREMIUM - PARTÍCULAS */
+  .particles {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute; width: 2px; height: 2px;
+    background: var(--primary); border-radius: 50%;
+    opacity: 0.2; animation: float-particle 8s infinite linear;
+  }
+  @keyframes float-particle {
+    0% { transform: translateY(100%) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.2; }
+    90% { opacity: 0.2; }
+    100% { transform: translateY(-100%) rotate(720deg); opacity: 0; }
+  }
+
+  .screen { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span id="sbClock">9:41</span><span id="sbData" style="font-weight:600;opacity:0.85;">—</span><span class="sb-icons">📶 🔋</span></div>
+
+  <!-- PARTÍCULAS PREMIUM -->
+  <div class="particles" id="particles"></div>
+
+  <!-- SPLASH -->
+  <div class="screen active splash-screen" id="splash">
+    <div class="brand-logo splash-logo"><span>C$</span></div>
+    <div class="login-title" style="margin-bottom:6px;">Control$</div>
+    <div class="splash-tagline">Gestão Premium de Crédito com IA</div>
+    <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="screen" id="login">
+    <div class="brand-logo"><span>C$</span></div>
+    <div class="login-title">Control$</div>
+    <div class="login-sub">Gestão Premium de Crédito com IA</div>
+    <div class="field">🪪 <input id="loginInput" placeholder="Digite seu CPF" inputmode="numeric" oninput="mascararCpf(this)"></div>
+    <button class="btn-primary" onclick="entrar()">🚀 Entrar no Sistema</button>
+    <button class="btn-secondary" id="btnLoginRapido" style="display:none;margin-top:10px;" onclick="loginRapido()">🔓 Continuar como <span id="loginRapidoNome"></span></button>
+    <div class="hint" id="loginAviso" style="display:none;color:var(--error);">CPF não encontrado</div>
+    <div class="hint">Teste: 000.000.000-00 (admin) · 111.111.111-11 (cobrador) · 123.456.789-00 (cliente)</div>
+    <div class="hint">Outro assinante (base isolada): 999.999.999-99</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen nav-space" id="dashboard">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Dashboard</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="greeting">Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">Admin</span></div>
+
+    <div class="kpi-grid">
+      <div class="kpi-mini"><div class="kpi-icon gold">💰</div><div class="kpi-text"><div class="lbl">Capital investido</div><div class="val gold" id="kpiCapital">R$ 45.200</div></div></div>
+      <div class="kpi-mini"><div class="kpi-icon green">📈</div><div class="kpi-text"><div class="lbl">Recebido hoje</div><div class="val green" id="kpiRecebido">R$ 1.860</div></div></div>
+      <div class="kpi-mini"><div class="kpi-icon blue">👥</div><div class="kpi-text"><div class="lbl">Clientes ativos</div><div class="val blue" id="kpiClientes">128</div></div></div>
+      <div class="kpi-mini"><div class="kpi-icon red">⚠️</div><div class="kpi-text"><div class="lbl">Inadimplentes</div><div class="val red" id="kpiInadimplentes">14</div></div></div>
+    </div>
+
+    <div class="card card-glow">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:800;font-size:13px;">📊 Receita do mês</span>
+        <span style="color:var(--primary);font-weight:800;font-size:14px;" id="receitaMes">R$ 18.430</span>
+      </div>
+      <div class="chart" id="chartBarras">
+        <div class="bar" style="height:40%"><span class="tooltip">R$ 1.200</span></div>
+        <div class="bar" style="height:65%"><span class="tooltip">R$ 2.100</span></div>
+        <div class="bar" style="height:50%"><span class="tooltip">R$ 1.600</span></div>
+        <div class="bar" style="height:80%"><span class="tooltip">R$ 2.800</span></div>
+        <div class="bar" style="height:60%"><span class="tooltip">R$ 1.900</span></div>
+        <div class="bar" style="height:95%;background:linear-gradient(180deg, var(--secondary), rgba(41,182,246,0.3))"><span class="tooltip">R$ 3.400</span></div>
+        <div class="bar" style="height:70%"><span class="tooltip">R$ 2.300</span></div>
+      </div>
+      <div class="chart-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+    </div>
+
+    <div class="section-title">📋 Cobranças de hoje <span class="badge-count">2 pendentes</span></div>
+    <div id="cobrancasHoje">
+      <div class="row-item">
+        <div class="name-col"><div class="n">João Silva</div><div class="v">R$ 35,00</div></div>
+        <div class="status-col" style="color:var(--primary)">✅ Pago</div>
+        <div class="action-col"><button class="chip-btn" style="background:var(--primary);color:#000">Ver</button></div>
+      </div>
+      <div class="row-item">
+        <div class="name-col"><div class="n">Carlos Antunes</div><div class="v">R$ 180,00</div></div>
+        <div class="status-col" style="color:var(--error)">⏰ Atrasado</div>
+        <div class="action-col"><button class="chip-btn" style="background:var(--error);color:#fff" onclick="cobrarComIA('carlos')">🤖 Cobrar</button></div>
+      </div>
+    </div>
+
+    <button class="btn-glow" onclick="cobrarTodosAtrasados()">🤖 Cobrar todos com IA</button>
+  </div>
+
+  <!-- CLIENTES -->
+  <div class="screen nav-space" id="clientes">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Clientes</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="search-box">🔍 <input placeholder="Buscar cliente..." id="buscaCliente" oninput="filtrarClientes(this.value)"></div>
+    <div id="listaClientes"></div>
+  </div>
+
+  <!-- CADASTRAR -->
+  <div class="screen" id="cadastrar">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Cadastrar</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+
+    <div class="ia-box" style="margin-bottom:16px;">
+      <div class="head">📱 Cadastro Inteligente</div>
+      <p>Envie o link para o cliente se cadastrar automaticamente via WhatsApp.</p>
+      <button class="btn-primary" style="background:var(--purple);color:#fff;margin-top:10px;" onclick="enviarLinkWhatsApp()">📤 Enviar link</button>
+    </div>
+
+    <div class="section-title">ou manualmente</div>
+    <div class="card">
+      <div class="form-group"><label>Nome completo</label><input id="novoNome" placeholder="Ex: Mariana Santos"></div>
+      <div class="form-row">
+        <div class="form-group"><label>CPF</label><input id="novoCpf" placeholder="000.000.000-00" oninput="mascararCpf(this)" maxlength="18"></div>
+        <div class="form-group"><label>@ Instagram</label><input id="novoInsta" placeholder="@usuario"></div>
+      </div>
+      <div class="form-group"><label>Chave PIX</label><input id="novoChavePix" placeholder="CPF, e-mail, telefone ou chave"></div>
+      <div class="form-row">
+        <div class="form-group"><label>WhatsApp</label><input id="novoWhats" placeholder="(00) 00000-0000" oninput="mascararTelefone(this)" maxlength="15"></div>
+        <div class="form-group"><label>SMS</label><input id="novoSms" placeholder="(00) 00000-0000" oninput="mascararTelefone(this)" maxlength="15"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Endereço</label><input id="novoEndereco" placeholder="Rua, número, bairro"></div>
+        <div class="form-group"><label>Região</label><input id="novoRegiao" placeholder="Ex: Zona Sul"></div>
+      </div>
+
+      <div class="section-title" style="margin:16px 0 8px;font-size:12px;">📸 Documentos obrigatórios</div>
+      <div class="form-group">
+        <label>Foto do cliente *</label>
+        <input type="file" accept="image/*" capture="user" id="novoFoto" oninput="previewFoto(this,'novoFotoPreview')">
+        <img id="novoFotoPreview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:12px;margin-top:8px;">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>RG ou CNH (frente) *</label><input type="file" accept="image/*" id="novoDocFrente"></div>
+        <div class="form-group"><label>RG ou CNH (verso) *</label><input type="file" accept="image/*" id="novoDocVerso"></div>
+      </div>
+      <div class="form-group"><label>Foto da casa ou comércio *</label><input type="file" accept="image/*" id="novoFotoFachada"></div>
+
+      <div id="novoClienteErro" style="display:none;color:var(--error);font-size:11px;margin-bottom:6px;"></div>
+      <button class="btn-primary" onclick="salvarNovoClienteCompleto()">💾 Salvar cliente</button>
+    </div>
+    <button class="fab" onclick="scrollToForm()">+</button>
+  </div>
+
+  <!-- PROPOSTAS -->
+  <div class="screen" id="renovacoes">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Propostas</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div style="color:var(--grey2);font-size:11px;margin-bottom:14px;">📌 Análise de crédito com IA em tempo real</div>
+    <div id="listaRenovacoes"></div>
+  </div>
+
+  <!-- CONTRATOS -->
+  <div class="screen nav-space" id="contratos">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Contratos</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+
+    <div class="ia-box" style="margin-bottom:16px;">
+      <div class="head">🎙 Gerador IA</div>
+      <p>Descreva o empréstimo e a IA preenche tudo.</p>
+      <div class="chat-input-row" style="margin-top:10px;">
+        <input id="iaContratoInput" placeholder='Ex: "R$ 800 para João em 20x"'>
+        <button onclick="gerarContratoIA()">🤖</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-group"><label>Cliente</label><select id="clienteContrato"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor</label><input id="valorEmprestado" placeholder="R$ 0,00" value="800"></div>
+        <div class="form-group"><label>Parcelas</label><input id="qtdParcelas" placeholder="Qtd." value="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Juros (%)</label><input id="taxaJuros" placeholder="Ex: 20" value="20"></div>
+        <div class="form-group"><label>Tipo</label>
+          <select id="tipoJuros">
+            <option value="total">Flat</option>
+            <option value="composto">Composto</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Frequência</label>
+        <div class="chips-row">
+          <span class="chip-select on" onclick="selecionarChip(this)">Diária</span>
+          <span class="chip-select" onclick="selecionarChip(this)">Dias úteis</span>
+          <span class="chip-select" onclick="selecionarChip(this)">Semanal</span>
+          <span class="chip-select" onclick="selecionarChip(this)">Mensal</span>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--surface2);margin-top:14px;padding:12px 14px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--grey2);">
+          <span>Total com juros</span><span id="calcTotal" style="color:#fff;font-weight:700;">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--grey2);margin-top:4px;">
+          <span>Por parcela</span><span id="calcParcela" style="color:var(--primary);font-weight:800;">—</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" style="margin-top:14px;" onclick="gerarParcelasComIA()">📊 Calcular</button>
+      <button class="btn-glow" style="margin-top:10px;" onclick="confirmarContrato()">✅ Confirmar e liberar empréstimo</button>
+      <div id="parcelasResultado" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- AGENDA -->
+  <div class="screen" id="agenda">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Agenda</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div id="agendaConteudo">
+      <div class="agenda-day">
+        <div class="d">📅 Hoje</div>
+        <div class="agenda-item">
+          <div class="dot2" style="background:var(--primary)"></div>
+          <div class="info"><div class="n">João Silva</div><div class="s">✅ Pago - Obrigado!</div></div>
+          <div class="amt" style="color:var(--primary)">R$ 35,00</div>
+        </div>
+        <div class="agenda-item">
+          <div class="dot2" style="background:var(--error)"></div>
+          <div class="info"><div class="n">Carlos Antunes</div><div class="s">⏰ Atrasado 3 dias</div></div>
+          <div class="amt" style="color:var(--error)">R$ 180,00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IA CHAT -->
+  <div class="screen nav-space" id="ia">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">IA Assistente</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="suggest-row">
+      <span class="suggest-chip" onclick="perguntar('Quem está atrasado?')">📊 Atrasados</span>
+      <span class="suggest-chip" onclick="perguntar('Como funciona o score?')">📈 Score</span>
+      <span class="suggest-chip" onclick="perguntar('Analisar João Silva')">🔍 Analisar</span>
+      <span class="suggest-chip" onclick="perguntar('Relatório do mês')">📋 Relatório</span>
+    </div>
+    <div class="chat-scroll" id="chatScroll">
+      <div class="msg bot">
+        <span class="tag">🧠 IA Premium</span>
+        Olá! Sou sua IA Assistente.<br><br>
+        <b>O que posso fazer:</b><br>
+        • Analisar crédito<br>
+        • Gerar contratos<br>
+        • Enviar cobranças<br>
+        • Negociar dívidas<br><br>
+        <b>Digite seu comando.</b>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input id="chatInput" placeholder='Ex: "Analisar João"'>
+      <button onclick="enviarChat()">➤</button>
+    </div>
+  </div>
+
+  <!-- COBRADOR -->
+  <div class="screen" id="cobrador">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Minha Rota</span>
+      <button class="notif-btn" onclick="abrirNotificacoesCobrador()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="greeting">Olá, <span class="admin-name-display">Cobrador</span></div>
+    <div class="role-row"><span class="role-tag">🗺️ Rota de hoje</span></div>
+
+    <div class="card card-glow">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="color:var(--grey2);font-size:11px;">Status</div><div style="font-size:18px;font-weight:800;color:var(--primary);">🟢 Ativo</div></div>
+        <div class="kpi-icon gold" style="width:44px;height:44px;font-size:22px;">🗺</div>
+      </div>
+    </div>
+
+    <div class="section-title">Paradas do dia <span class="badge-count" id="cobradorContagem">0</span></div>
+    <div id="listaRotaCobrador"></div>
+  </div>
+
+  <!-- CLIENTE PORTAL -->
+  <div class="screen" id="cliente">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Meu Painel</span>
+      <button class="notif-btn" onclick="abrirNotificacoesCliente()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="greeting">Bem-vindo, <span class="admin-name-display" id="clienteNameDisplay">Mariana Santos</span></div>
+    <div class="role-row" style="margin-bottom:6px;align-items:center;">
+      <span class="role-tag">💳 Cliente</span>
+      <img id="clienteFoto" style="display:none;width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--divider);">
+    </div>
+    <div class="sub" style="color:var(--grey2);font-size:11px;margin-bottom:12px;">Central com IA</div>
+
+    <div class="card card-glow" id="clienteSemDivida" style="display:none;"></div>
+
+    <div class="debit-box" id="debitoBox">
+      <div class="lbl">💰 Débito Atual</div>
+      <div class="val" id="clienteDebitoVal">R$ 650,00</div>
+      <div class="due" id="clienteDebitoDue">📅 Vencimento: hoje</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;" id="clienteBotoesPagamento">
+      <button class="btn-primary" onclick="abrirPixCobranca('parcela')">💳 Pagar parcela (R$ 105,00)</button>
+      <button class="btn-secondary" onclick="abrirPixCobranca('juros')">📅 Pagar juros (R$ 30,00)</button>
+    </div>
+
+    <div class="card" id="clientePixBox" style="display:none;">
+      <div class="section-title" style="margin-top:0;" id="clientePixTitulo">💳 Pagamento via Pix</div>
+      <div class="qr"></div>
+      <div style="text-align:center;font-size:22px;font-weight:900;margin-bottom:4px;" id="clientePixValor">R$ 0,00</div>
+      <div style="text-align:center;color:var(--grey2);font-size:10px;margin-bottom:14px;">Chave: <span id="clientePixChave" style="color:#fff;">—</span></div>
+      <button class="btn-pix" onclick="copiarPix()">📋 COPIAR CHAVE PIX</button>
+      <div id="clientePixStatus" style="text-align:center;font-size:11px;margin-top:8px;color:var(--tertiary);">⏳ Aguardando...</div>
+    </div>
+
+    <div class="card" id="clienteQuitarCard">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--grey2);margin-bottom:10px;">
+        <span>Total para quitar</span><span id="clienteQuitarVal" style="color:#fff;font-weight:800;">R$ 650,00</span>
+      </div>
+      <button class="btn-glow" onclick="clienteQuitarEmprestimo()" id="clienteQuitarBtn">🎉 Quitar empréstimo</button>
+    </div>
+
+    <div id="clienteHistorico" style="margin-bottom:14px;"></div>
+
+    <div class="ia-box" id="centralAcordos">
+      <div class="head">💬 Negociação com IA</div>
+      <p>Negocie sua dívida automaticamente com a IA.</p>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="negociarDividaIA()">🤝 Negociar</button>
+    </div>
+
+    <div class="section-title">📊 Meu Score</div>
+    <div class="card" style="text-align:center;">
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;margin-bottom:4px;">
+        <span id="clienteScoreVal" style="font-size:34px;font-weight:900;">—</span>
+        <span style="color:var(--grey2);font-size:12px;">/ 100</span>
+      </div>
+      <span id="clienteScoreBadge" class="badge risk-mid" style="display:inline-block;margin-bottom:8px;">Risco —</span>
+      <div style="background:var(--surface2);border-radius:6px;height:6px;overflow:hidden;margin-bottom:8px;">
+        <div id="clienteScoreBarra" style="height:100%;width:0%;transition:width 0.6s;"></div>
+      </div>
+      <div id="clienteScoreDetalhe" style="color:var(--grey2);font-size:10px;">Calculando...</div>
+    </div>
+
+    <div class="section-title">⚙️ Minha Conta</div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="color:var(--grey2);font-size:11px;">Tempo de conta ativa</div>
+      <div id="clienteTempoAtivo" style="font-weight:800;font-size:13px;">—</div>
+    </div>
+  </div>
+
+  <!-- CONFIGURAÇÕES PREMIUM -->
+  <div class="screen" id="painel">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">⚙️ Configurações</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+
+    <!-- PERSONALIZAÇÃO DO NOME -->
+    <div class="card card-glow">
+      <div class="section-title" style="margin-top:0;">👤 Personalização</div>
+      <div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Como você quer ser chamado no app?</div>
+      <div class="name-edit">
+        <input id="adminNameInput" placeholder="Ex: Seu Nome" value="Admin">
+        <button onclick="salvarNomeAdmin()">💾 Salvar</button>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--grey2);">
+        Nome atual: <span id="adminNamePreview" style="color:var(--primary);font-weight:700;">Admin</span>
+      </div>
+    </div>
+
+    <div class="section-title">📋 Dados do Assinante</div>
+    <div class="card">
+      <div class="form-group"><label>Nome / Razão Social</label><input id="assNome" placeholder="Ex: Ricardo Souza"></div>
+      <div class="form-group"><label>CPF/CNPJ</label><input id="assDocumento" placeholder="000.000.000-00"></div>
+      <div class="form-row">
+        <div class="form-group"><label>WhatsApp</label><input id="assWhatsapp" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label>SMS</label><input id="assSms" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="form-group"><label>Banco</label><input id="assBanco" placeholder="Ex: Nubank"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Agência</label><input id="assAgencia" placeholder="0000"></div>
+        <div class="form-group"><label>Conta</label><input id="assConta" placeholder="00000-0"></div>
+      </div>
+      <div class="form-group"><label>Chave PIX</label><input id="assChavePix" placeholder="CPF, e-mail, telefone ou chave"></div>
+      <button class="btn-primary" onclick="salvarDadosAssinante()">💾 Salvar dados</button>
+      <div id="assinanteStatus" style="display:none;color:var(--primary);font-size:11px;margin-top:8px;text-align:center;">✅ Dados salvos!</div>
+    </div>
+
+    <div class="section-title">🤖 Automações</div>
+    <div class="admin-list-item">
+      <div><div class="n">Cobrança IA</div><div class="s">Envio automático de mensagens</div></div>
+      <div class="toggle on" id="toggleCobrancaIA" onclick="toggleAutomacao(this, 'cobrancaIA')"></div>
+    </div>
+    <div class="admin-list-item">
+      <div><div class="n">Análise de crédito</div><div class="s">Bloqueia aprovação de risco alto sem confirmação manual</div></div>
+      <div class="toggle on" id="toggleAnaliseCredito" onclick="toggleAutomacao(this, 'analiseCredito')"></div>
+    </div>
+    <div class="admin-list-item">
+      <div><div class="n">Negociação automática</div><div class="s">IA negocia dívidas com o cliente</div></div>
+      <div class="toggle on" id="toggleNegociacaoAuto" onclick="toggleAutomacao(this, 'negociacaoAuto')"></div>
+    </div>
+
+    <div class="section-title">💳 Assinatura</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div><div style="font-weight:800;">Plano Premium</div><div style="color:var(--grey2);font-size:10px;">500 clientes</div></div>
+        <span class="badge gold">🌟 Ativo</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-primary" style="background:var(--secondary);flex:1;" onclick="renovarAssinatura('pix')">💳 PIX</button>
+        <button class="btn-secondary" style="flex:1;" onclick="renovarAssinatura('cartao')">💳 Cartão</button>
+      </div>
+    </div>
+
+    <div class="section-title">👥 Cobradores</div>
+    <div id="listaCobradores"></div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group"><label>Nome</label><input id="cobradorNome" placeholder="Nome do cobrador"></div>
+        <div class="form-group"><label>CPF</label><input id="cobradorCpf" placeholder="000.000.000-00" oninput="mascararCpf(this)" maxlength="18"></div>
+      </div>
+      <div class="form-group"><label>WhatsApp</label><input id="cobradorWhats" placeholder="(00) 00000-0000" oninput="mascararTelefone(this)" maxlength="15"></div>
+      <div class="form-group"><label>Região</label><input id="cobradorRegiao" placeholder="Ex: Zona Sul"></div>
+      <button class="btn-secondary" onclick="adicionarCobrador()">➕ Adicionar Cobrador</button>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="screen" id="historico">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">📋 Histórico</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div id="listaHistoricoCompleto"></div>
+  </div>
+
+  <!-- LOCALIZAR -->
+  <div class="screen" id="localizar">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">📍 Localizar</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div style="color:var(--grey2);font-size:11px;margin-bottom:14px;">Peça a localização do cliente em tempo real.</div>
+    <div id="listaLocalizar"></div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">✨ Mensagem</div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav" id="bottomNav">
+    <button class="bn-item active" data-id="dashboard" onclick="show('dashboard')"><span class="bn-ic">📊</span>Início</button>
+    <button class="bn-item" data-id="clientes" onclick="show('clientes')"><span class="bn-ic">👥</span>Clientes</button>
+    <button class="bn-item" data-id="contratos" onclick="show('contratos')"><span class="bn-ic">📄</span>Contratos</button>
+    <button class="bn-item" data-id="ia" onclick="show('ia')"><span class="bn-ic">🤖</span>IA</button>
+    <button class="bn-item" onclick="abrirMenu()"><span class="bn-ic">☰</span>Menu</button>
+  </div>
+
+  <!-- MENU -->
+  <div class="overlay" id="menuOverlay" onclick="fecharMenu()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div class="nome" id="drawerNome">—</div>
+      <div class="perfil" id="drawerPerfil">—</div>
+      <div class="sub-text" id="drawerSub">🌟 Premium</div>
+    </div>
+    <div class="drawer-list" id="drawerList"></div>
+    <div class="drawer-foot">
+      <div class="drawer-sair" onclick="voltarLogin()">⎋ Sair</div>
+    </div>
+  </div>
+
+  <!-- NOTIFICAÇÕES -->
+  <div class="overlay" id="notifOverlay" onclick="fecharNotificacoes()"></div>
+  <div class="drawer-right" id="notifDrawer">
+    <div class="notif-head">
+      <span class="t">🔔 Notificações</span>
+      <span class="count" id="notifCount">0</span>
+      <button onclick="fecharNotificacoes()">✕</button>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
+  <!-- ROTA -->
+  <div class="sheet-overlay" id="rotaOverlay" onclick="fecharRota(event)">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="titulo" id="rotaTitulo">🗺️ Ir até o cliente</div>
+      <div class="endereco" id="rotaEndereco">—</div>
+      <button class="sheet-btn" onclick="confirmarRota('waze')"><span class="ic">🧭</span> Waze</button>
+      <button class="sheet-btn" onclick="confirmarRota('maps')"><span class="ic">🗺️</span> Google Maps</button>
+      <button class="sheet-cancelar" onclick="fecharRota()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- DETALHE DA NOTIFICAÇÃO -->
+  <div class="sheet-overlay" id="notifDetalheOverlay" onclick="fecharDetalheNotificacao(event)">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="titulo" id="notifDetalheTitulo">—</div>
+      <div class="endereco" id="notifDetalheQuando">—</div>
+      <div style="color:var(--grey);font-size:12.5px;line-height:1.5;margin:12px 0 18px;text-align:left;" id="notifDetalheTexto">—</div>
+      <button class="sheet-cancelar" onclick="fecharDetalheNotificacao()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO PREMIUM
+// ============================================================
+const STORAGE_KEY = 'controle_premium';
+let auditoriaLog = [];          // agora cada item tem {publico, assinanteId, clienteId, cobradorId}
+let perfilAtual = null;
+let usuarioAtual = null;
+let clientesDB = [];
+let cobradoresDB = [];
+let localizacoesDB = {};
+let solicitacoesLocalizacao = {};
+let assinaturaVencimento = new Date();
+let dadosAssinantePorId = {};   // { [assinanteId]: {nome, documento, whatsapp, ...} } — antes era 1 valor só, compartilhado entre TODOS os assinantes
+let adminNamePorId = {};        // { [assinanteId]: 'Nome exibido' } — idem
+let automacoesPorId = {};       // { [assinanteId]: {cobrancaIA, analiseCredito, negociacaoAuto} }
+let adminName = 'Admin';
+let usuariosExtras = [];        // [BANCO DE DADOS] cobradores/clientes criados em runtime (persistidos e remontados no login)
+let propostasNovoEmprestimoDB = []; // [BANCO DE DADOS] pedidos de novo empréstimo feitos pelo cliente, aguardando aprovação do admin
+let credenciaisBiometricasDB = {};  // [BANCO DE DADOS] cpf -> { credentialId, criadoEm } para login rápido (Face ID/PIN/senha do aparelho)
+
+// ============================================================
+// [BACK-END] MULTI-TENANT — cada assinante só acessa seus próprios dados
+// ============================================================
+function assinanteAtualId() {
+  return usuarioAtual ? usuarioAtual.assinanteId : null;
+}
+function clientesDoAssinante() {
+  const id = assinanteAtualId();
+  if (!id) return [];
+  return clientesDB.filter(c => c.assinanteId === id);
+}
+function cobradoresDoAssinante() {
+  const id = assinanteAtualId();
+  if (!id) return [];
+  return cobradoresDB.filter(c => c.assinanteId === id);
+}
+// Garante que o registro pertence ao assinante logado antes de ler/gravar (evita vazamento entre contas)
+function pertenceAoAssinante(registro) {
+  return !!registro && registro.assinanteId === assinanteAtualId();
+}
+// [BACK-END/SEGURANÇA] Impede conflito de login: CPF precisa ser único em toda a base (admin, cobrador e cliente)
+function cpfJaExiste(cpf) {
+  return usuariosDB.some(u => u.cpf === cpf);
+}
+
+function dadosAssinanteAtual() { return dadosAssinantePorId[assinanteAtualId()] || null; }
+function adminNameAtual() { return adminNamePorId[assinanteAtualId()] || 'Admin'; }
+function automacoesAtuais() {
+  const id = assinanteAtualId();
+  if (!automacoesPorId[id]) automacoesPorId[id] = { cobrancaIA: true, analiseCredito: true, negociacaoAuto: true };
+  return automacoesPorId[id];
+}
+
+// ============================================================
+// PERSISTÊNCIA
+// ============================================================
+function salvarEstado() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      clientesDB, cobradoresDB, assinaturaVencimento: assinaturaVencimento.toISOString(),
+      dadosAssinantePorId, auditoriaLog, localizacoesDB, solicitacoesLocalizacao, adminNamePorId,
+      usuariosExtras, propostasNovoEmprestimoDB, credenciaisBiometricasDB, automacoesPorId
+    }));
+  } catch(e) {}
+}
+
+function carregarEstado() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed.clientesDB) clientesDB = parsed.clientesDB;
+      if (parsed.cobradoresDB) cobradoresDB = parsed.cobradoresDB;
+      if (parsed.assinaturaVencimento) assinaturaVencimento = new Date(parsed.assinaturaVencimento);
+      if (parsed.dadosAssinantePorId) dadosAssinantePorId = parsed.dadosAssinantePorId;
+      if (parsed.auditoriaLog) auditoriaLog = parsed.auditoriaLog;
+      if (parsed.localizacoesDB) localizacoesDB = parsed.localizacoesDB;
+      if (parsed.solicitacoesLocalizacao) solicitacoesLocalizacao = parsed.solicitacoesLocalizacao;
+      if (parsed.adminNamePorId) adminNamePorId = parsed.adminNamePorId;
+      if (parsed.automacoesPorId) automacoesPorId = parsed.automacoesPorId;
+      if (parsed.usuariosExtras) usuariosExtras = parsed.usuariosExtras;
+      if (parsed.propostasNovoEmprestimoDB) propostasNovoEmprestimoDB = parsed.propostasNovoEmprestimoDB;
+      if (parsed.credenciaisBiometricasDB) credenciaisBiometricasDB = parsed.credenciaisBiometricasDB;
+    }
+  } catch(e) {}
+  // Remonta na usuariosDB (em memória) os cobradores/clientes criados em sessões anteriores
+  usuariosExtras.forEach(u => { if (!usuariosDB.some(x => x.cpf === u.cpf)) usuariosDB.push(u); });
+}
+
+// ============================================================
+// PARTÍCULAS PREMIUM
+// ============================================================
+function criarParticulas() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 8 + 's';
+    p.style.animationDuration = (6 + Math.random() * 6) + 's';
+    p.style.width = (1 + Math.random() * 3) + 'px';
+    p.style.height = p.style.width;
+    p.style.opacity = 0.1 + Math.random() * 0.15;
+    container.appendChild(p);
+  }
+}
+
+// ============================================================
+// NOME DO ADMIN
+// ============================================================
+function salvarNomeAdmin() {
+  const input = document.getElementById('adminNameInput');
+  const nome = input.value.trim();
+  if (nome.length > 0) {
+    adminNamePorId[assinanteAtualId()] = nome;
+    salvarEstado();
+    atualizarNomesAdmin();
+    const t = document.getElementById('toast');
+    t.textContent = `✅ Nome atualizado para "${nome}"!`;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+    registrarAuditoria('Nome alterado', `Agora é ${nome}`);
+  }
+}
+
+function atualizarNomesAdmin() {
+  const nome = adminNameAtual();
+  const elementos = document.querySelectorAll('.admin-name-display');
+  elementos.forEach(el => {
+    if (el.id === 'adminNameDisplay' || el.id === 'clienteNameDisplay') {
+      el.textContent = nome;
+    }
+  });
+  document.getElementById('adminNamePreview').textContent = nome;
+  document.getElementById('adminNameInput').value = nome;
+  document.getElementById('drawerNome').textContent = nome;
+}
+
+// ============================================================
+// AUDITORIA
+// ============================================================
+// [BACK-END] Cada evento carrega um "tópico" (publico) e o dono do dado (assinanteId/clienteId).
+// Isso corrige o bug de notificações cruzadas: filtragem passa a ser por identidade, não por texto.
+function registrarAuditoria(titulo, detalhe, opts = {}) {
+  auditoriaLog.unshift({
+    titulo, detalhe,
+    quando: new Date().toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}),
+    quandoISO: new Date().toISOString(),            // usado pra somar valores "de hoje" / "do mês" com precisão
+    valor: typeof opts.valor === 'number' ? opts.valor : null,  // valor em R$ do evento, quando aplicável
+    publico: opts.publico || 'admin',              // 'admin' | 'cobrador' | 'cliente'
+    assinanteId: opts.assinanteId || assinanteAtualId(),
+    clienteId: opts.clienteId || null,
+    cobradorId: opts.cobradorId || null,
+  });
+  auditoriaLog = auditoriaLog.slice(0, 200);
+  renderizarHistorico();
+  renderizarNotificacoes();
+  marcarNotificacaoNaoLida();
+  atualizarDashboard();
+  salvarEstado();
+}
+
+// [BACK-END] fila de notificações que o usuário logado tem direito de ver
+function notificacoesRelevantes() {
+  const id = assinanteAtualId();
+  if (!id) return [];
+  if (perfilAtual === 'cliente') {
+    return auditoriaLog.filter(a => a.assinanteId === id && a.publico === 'cliente' && a.clienteId === usuarioAtual.clienteId);
+  }
+  if (perfilAtual === 'cobrador') {
+    return auditoriaLog.filter(a => a.assinanteId === id && a.publico === 'cobrador');
+  }
+  return auditoriaLog.filter(a => a.assinanteId === id); // admin enxerga tudo do próprio negócio
+}
+
+function renderizarHistorico() {
+  const lista = document.getElementById('listaHistoricoCompleto');
+  if (!lista) return;
+  const meus = notificacoesRelevantes();
+  lista.innerHTML = meus.length === 0
+    ? '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">📭 Nenhuma ação registrada.</div>'
+    : meus.map((a, i) => `
+      <div class="admin-list-item" style="cursor:pointer;" onclick="abrirDetalheNotificacao(${i})"><div><div class="n">${a.titulo}</div><div class="s">${a.quando} — ${a.detalhe}</div></div></div>
+    `).join('');
+}
+
+function renderizarNotificacoes() {
+  const lista = document.getElementById('notifList');
+  if (!lista) return;
+  const notifs = notificacoesRelevantes();
+  lista.innerHTML = notifs.length === 0
+    ? '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">📭 Nenhuma notificação sua.</div>'
+    : notifs.map((a, i) => `<div class="admin-list-item" style="cursor:pointer;" onclick="abrirDetalheNotificacao(${i})"><div><div class="n">${a.titulo}</div><div class="s">${a.quando} — ${a.detalhe}</div></div></div>`).join('');
+  const count = document.getElementById('notifCount');
+  if (count) count.textContent = notifs.length;
+}
+
+// Abre um popup com todos os dados daquela notificação (título, data/hora,
+// detalhe completo e valor em R$, quando existir) — antes clicar não fazia nada.
+function abrirDetalheNotificacao(index) {
+  const notifs = notificacoesRelevantes();
+  const a = notifs[index];
+  if (!a) return;
+
+  document.getElementById('notifDetalheTitulo').textContent = a.titulo;
+  document.getElementById('notifDetalheQuando').textContent = a.quando;
+
+  let texto = a.detalhe || '';
+  if (typeof a.valor === 'number') texto += `\n\nValor: ${fmtMoney(a.valor)}`;
+  if (a.clienteId) {
+    const cliente = clientesDB.find(c => c.id === a.clienteId);
+    if (cliente) texto += `\n\nCliente: ${cliente.nome}`;
+  }
+  document.getElementById('notifDetalheTexto').style.whiteSpace = 'pre-line';
+  document.getElementById('notifDetalheTexto').textContent = texto;
+
+  document.getElementById('notifDetalheOverlay').classList.add('show');
+}
+
+function fecharDetalheNotificacao(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('notifDetalheOverlay').classList.remove('show');
+}
+
+function marcarNotificacaoNaoLida() {
+  document.querySelectorAll('.notif-badge').forEach(b => b.classList.add('show'));
+}
+
+function abrirNotificacoes() {
+  renderizarNotificacoes();
+  document.getElementById('notifOverlay').classList.add('show');
+  document.getElementById('notifDrawer').classList.add('show');
+  document.querySelectorAll('.notif-badge').forEach(b => b.classList.remove('show'));
+}
+
+function abrirNotificacoesCliente() {
+  renderizarNotificacoes();
+  document.getElementById('notifOverlay').classList.add('show');
+  document.getElementById('notifDrawer').classList.add('show');
+  document.querySelectorAll('.notif-badge').forEach(b => b.classList.remove('show'));
+}
+
+function abrirNotificacoesCobrador() {
+  renderizarNotificacoes();
+  document.getElementById('notifOverlay').classList.add('show');
+  document.getElementById('notifDrawer').classList.add('show');
+  document.querySelectorAll('.notif-badge').forEach(b => b.classList.remove('show'));
+}
+
+function fecharNotificacoes() {
+  document.getElementById('notifOverlay').classList.remove('show');
+  document.getElementById('notifDrawer').classList.remove('show');
+}
+
+// ============================================================
+// USUÁRIOS
+// ============================================================
+const usuariosDB = [
+  { cpf: '00000000000', nome: 'Admin Master', perfil: 'admin', assinanteId: 'demo1' },
+  { cpf: '11111111111', nome: 'Cobrador', perfil: 'cobrador', assinanteId: 'demo1' },
+  { cpf: '12345678900', nome: 'João Silva', perfil: 'cliente', clienteId: 'joao', assinanteId: 'demo1' },
+  { cpf: '45611122200', nome: 'Carlos Antunes', perfil: 'cliente', clienteId: 'carlos', assinanteId: 'demo1' },
+  { cpf: '78911122200', nome: 'Mariana Santos', perfil: 'cliente', clienteId: 'mariana', assinanteId: 'demo1' },
+  // Segundo assinante (outra empresa) só para provar que a base fica isolada entre contas diferentes
+  { cpf: '99999999999', nome: 'Admin Dois', perfil: 'admin', assinanteId: 'demo2' },
+];
+
+const menuPorPerfil = {
+  admin: [
+    { id: 'dashboard', ic: '📊', label: 'Dashboard' },
+    { id: 'clientes', ic: '👥', label: 'Clientes' },
+    { id: 'cadastrar', ic: '➕', label: 'Cadastrar' },
+    { id: 'renovacoes', ic: '💸', label: 'Propostas' },
+    { id: 'contratos', ic: '📄', label: 'Contratos' },
+    { id: 'agenda', ic: '📅', label: 'Agenda' },
+    { id: 'ia', ic: '🤖', label: 'IA Assistente' },
+    { id: 'painel', ic: '⚙', label: 'Configurações' },
+    { id: 'historico', ic: '📋', label: 'Histórico' },
+    { id: 'localizar', ic: '📍', label: 'Localizar' },
+  ],
+  cobrador: [
+    { id: 'cobrador', ic: '🗺', label: 'Minha Rota' },
+  ],
+  cliente: [
+    { id: 'cliente', ic: '💳', label: 'Meu Painel' },
+  ],
+};
+
+function formatarCpf(d) { return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : d; }
+
+function montarMenu() {
+  if (!perfilAtual) return;
+  document.getElementById('drawerNome').textContent = perfilAtual === 'admin' ? adminNameAtual() : (usuarioAtual?.nome || '—');
+  document.getElementById('drawerPerfil').textContent = { admin: 'Administrador', cobrador: 'Cobrador', cliente: 'Cliente' }[perfilAtual] || perfilAtual;
+  document.getElementById('drawerSub').textContent = perfilAtual === 'admin' ? '🌟 Premium' : '📱 Mobile';
+  
+  const lista = document.getElementById('drawerList');
+  lista.innerHTML = (menuPorPerfil[perfilAtual] || []).map(item => `
+    <div class="drawer-item" data-target="${item.id}" onclick="show('${item.id}'); fecharMenu();">
+      <span class="ic">${item.ic}</span>${item.label}
+    </div>
+  `).join('');
+  atualizarNomesAdmin();
+}
+
+function abrirMenu() {
+  document.getElementById('menuOverlay').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+}
+function fecharMenu() {
+  document.getElementById('menuOverlay').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.bottom-nav .bn-item').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  const nav = document.getElementById('bottomNav');
+  if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
+  if (id === 'dashboard') atualizarDashboard();
+  if (id === 'contratos') renderizarSelectClienteContrato();
+  if (id === 'painel') preencherFormAssinante();
+}
+
+function entrar() {
+  const cpf = document.getElementById('loginInput').value.trim().replace(/\D/g, '');
+  const user = usuariosDB.find(u => u.cpf === cpf);
+  const aviso = document.getElementById('loginAviso');
+  if (!user) { if (aviso) aviso.style.display = 'block'; return; }
+  if (aviso) aviso.style.display = 'none';
+  perfilAtual = user.perfil;
+  usuarioAtual = user;
+  montarMenu();
+
+  // login rápido: lembra o último acesso bem-sucedido neste aparelho, pra
+  // não precisar redigitar o CPF toda vez (sem depender de biometria real do SO)
+  credenciaisBiometricasDB[cpf] = { nome: user.nome, perfil: user.perfil, criadoEm: new Date().toISOString() };
+
+  if (user.perfil === 'admin') {
+    show('dashboard');
+    registrarAuditoria('🔑 Login admin', `CPF: ${formatarCpf(cpf)}`);
+    document.querySelector('#dashboard .greeting').innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${adminNameAtual()}</span>`;
+  } else if (user.perfil === 'cobrador') {
+    show('cobrador');
+    registrarAuditoria('🔑 Login cobrador', `CPF: ${formatarCpf(cpf)}`, { publico: 'cobrador' });
+    document.querySelector('#cobrador .greeting').textContent = `Bem-vindo, ${user.nome}`;
+    renderizarRotaCobrador();
+  } else {
+    show('cliente');
+    registrarAuditoria('🔑 Login cliente', `CPF: ${formatarCpf(cpf)}`, { publico: 'cliente', clienteId: user.clienteId });
+    document.querySelector('#cliente .greeting').innerHTML = `Bem-vindo, <span class="admin-name-display" id="clienteNameDisplay">${user.nome}</span>`;
+    clienteAtualizarUI();
+    capturarLocalizacaoCliente(user.clienteId, user.nome);
+  }
+}
+
+function ultimoLoginRapido() {
+  const entradas = Object.entries(credenciaisBiometricasDB || {});
+  if (entradas.length === 0) return null;
+  entradas.sort((a, b) => new Date(b[1].criadoEm) - new Date(a[1].criadoEm));
+  const [cpf, dados] = entradas[0];
+  return { cpf, ...dados };
+}
+
+function atualizarBotaoLoginRapido() {
+  const btn = document.getElementById('btnLoginRapido');
+  if (!btn) return;
+  const salvo = ultimoLoginRapido();
+  if (salvo) {
+    document.getElementById('loginRapidoNome').textContent = salvo.nome;
+    btn.style.display = 'block';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function loginRapido() {
+  const salvo = ultimoLoginRapido();
+  if (!salvo) return;
+  document.getElementById('loginInput').value = salvo.cpf;
+  entrar();
+}
+
+function voltarLogin() {
+  fecharMenu();
+  perfilAtual = null;
+  usuarioAtual = null;
+  document.getElementById('loginInput').value = '';
+  show('login');
+  atualizarBotaoLoginRapido();
+}
+
+// ============================================================
+// ROTA
+// ============================================================
+let rotaAtual = null;
+function abrirRota(nome, end) { rotaAtual = end; document.getElementById('rotaTitulo').textContent = `🗺️ Ir até ${nome}`; document.getElementById('rotaEndereco').textContent = end; document.getElementById('rotaOverlay').classList.add('show'); }
+function fecharRota(e) { if (e) e.stopPropagation(); document.getElementById('rotaOverlay').classList.remove('show'); }
+function confirmarRota(app) {
+  if (!rotaAtual) return;
+  const url = app === 'waze' ? `https://waze.com/ul?q=${encodeURIComponent(rotaAtual)}&navigate=yes` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(rotaAtual)}`;
+  window.open(url, '_blank');
+  fecharRota();
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+async function copiarPix() {
+  const t = document.getElementById('toast');
+  const chave = document.getElementById('clientePixChave')?.textContent?.trim();
+  if (!chave || chave === '—' || chave === 'chave não cadastrada') {
+    t.textContent = '⚠ Nenhuma chave PIX cadastrada pelo assinante ainda.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(chave);
+    t.textContent = '📋 Chave PIX copiada! Abra seu banco e cole na área de PIX.';
+  } catch (e) {
+    t.textContent = `⚠ Não deu pra copiar automaticamente. Chave: ${chave}`;
+  }
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ============================================================
+// ASSINATURA
+// ============================================================
+function renovarAssinatura(tipo) {
+  assinaturaVencimento = new Date();
+  assinaturaVencimento.setDate(assinaturaVencimento.getDate() + 30);
+  const t = document.getElementById('toast');
+  t.textContent = `✅ Assinatura renovada via ${tipo === 'pix' ? 'PIX' : 'Cartão'} por 30 dias. 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Assinatura renovada', `via ${tipo} - Premium`);
+  salvarEstado();
+}
+
+function salvarDadosAssinante() {
+  const dados = {
+    nome: document.getElementById('assNome').value.trim(),
+    documento: document.getElementById('assDocumento').value.trim(),
+    whatsapp: document.getElementById('assWhatsapp').value.trim(),
+    sms: document.getElementById('assSms').value.trim(),
+    banco: document.getElementById('assBanco').value.trim(),
+    agencia: document.getElementById('assAgencia').value.trim(),
+    conta: document.getElementById('assConta').value.trim(),
+    chavePix: document.getElementById('assChavePix').value.trim(),
+  };
+  
+  if (!dados.nome || !dados.documento || !dados.whatsapp || !dados.chavePix) {
+    const t = document.getElementById('toast');
+    t.textContent = '⚠ Preencha Nome, CPF, WhatsApp e Chave PIX.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+  
+  dadosAssinantePorId[assinanteAtualId()] = dados;
+  document.getElementById('assinanteStatus').style.display = 'block';
+  const t = document.getElementById('toast');
+  t.textContent = '✅ Dados salvos! Cobranças automáticas liberadas. 🌟';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Dados assinante', 'Atualizados - Premium');
+  salvarEstado();
+}
+
+function toggleAutomacao(el, chave) {
+  const auto = automacoesAtuais();
+  auto[chave] = !auto[chave];
+  el.classList.toggle('on', auto[chave]);
+  salvarEstado();
+  const t = document.getElementById('toast');
+  t.textContent = auto[chave] ? '✅ Automação ativada.' : '⏸ Automação desativada.';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Preenche a tela de Configurações com os dados e automações do assinante
+// logado — antes o formulário sempre voltava em branco, mesmo já tendo salvo.
+function preencherFormAssinante() {
+  const dados = dadosAssinanteAtual();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('assNome', dados?.nome);
+  set('assDocumento', dados?.documento);
+  set('assWhatsapp', dados?.whatsapp);
+  set('assSms', dados?.sms);
+  set('assBanco', dados?.banco);
+  set('assAgencia', dados?.agencia);
+  set('assConta', dados?.conta);
+  set('assChavePix', dados?.chavePix);
+  const status = document.getElementById('assinanteStatus');
+  if (status) status.style.display = dados ? 'block' : 'none';
+
+  const auto = automacoesAtuais();
+  document.getElementById('toggleCobrancaIA')?.classList.toggle('on', auto.cobrancaIA);
+  document.getElementById('toggleAnaliseCredito')?.classList.toggle('on', auto.analiseCredito);
+  document.getElementById('toggleNegociacaoAuto')?.classList.toggle('on', auto.negociacaoAuto);
+
+  atualizarNomesAdmin();
+}
+
+// ============================================================
+// COBRADORES
+// ============================================================
+function adicionarCobrador() {
+  const nome = document.getElementById('cobradorNome').value.trim();
+  const cpf = document.getElementById('cobradorCpf').value.trim().replace(/\D/g, '');
+  const whats = document.getElementById('cobradorWhats').value.trim().replace(/\D/g, '');
+  const regiao = document.getElementById('cobradorRegiao').value.trim();
+  const t = document.getElementById('toast');
+
+  if (!nome || cpf.length !== 11 || !whats) {
+    t.textContent = '⚠ Preencha Nome, CPF (11) e WhatsApp.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+
+  // sem essa checagem, um CPF repetido quebraria o login (o primeiro cadastro
+  // encontrado sempre vence, então o segundo cobrador nunca conseguiria entrar)
+  if (cpfJaExiste(cpf)) {
+    t.textContent = '⚠ Este CPF já está cadastrado no sistema.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+
+  const cpfMask = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  const assinanteId = assinanteAtualId();
+  const cobradorId = 'cob_' + Date.now();
+  cobradoresDB.push({ id: cobradorId, assinanteId, nome, cpf: cpfMask, whats: `(${whats.slice(0,2)}) ${whats.slice(2,7)}-${whats.slice(7)}`, regiao: regiao || 'Não informada' });
+
+  // cria o login do cobrador (por CPF) — sem isso o cadastro ficava só de enfeite,
+  // ele nunca conseguia entrar de verdade no sistema
+  const novoUsuarioCobrador = { cpf, nome, perfil: 'cobrador', assinanteId, cobradorId };
+  usuariosDB.push(novoUsuarioCobrador);
+  usuariosExtras.push(novoUsuarioCobrador);
+
+  renderizarCobradores();
+  t.textContent = `✅ Cobrador ${nome} adicionado! Já pode entrar com o CPF. 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+  registrarAuditoria('Cobrador adicionado', `${nome} - ${cpfMask}`);
+  salvarEstado();
+
+  document.getElementById('cobradorNome').value = '';
+  document.getElementById('cobradorCpf').value = '';
+  document.getElementById('cobradorWhats').value = '';
+  document.getElementById('cobradorRegiao').value = '';
+}
+
+function renderizarCobradores() {
+  const lista = document.getElementById('listaCobradores');
+  if (!lista) return;
+  lista.innerHTML = cobradoresDoAssinante().map(c => `
+    <div class="admin-list-item">
+      <div><div class="n">${c.nome}</div><div class="s">${c.cpf} · ${c.whats} · ${c.regiao}</div></div>
+      <button class="chip-btn" style="background:var(--error);color:#fff;padding:4px 10px;" onclick="removerCobrador('${c.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function removerCobrador(id) {
+  cobradoresDB = cobradoresDB.filter(c => c.id !== id);
+  renderizarCobradores();
+  salvarEstado();
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function mascararCpf(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 11);
+  v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  el.value = v;
+}
+function mascararTelefone(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 11);
+  v = v.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{1,4})$/, '$1-$2');
+  el.value = v;
+}
+function parseNumeroBR(t) {
+  if (!t) return 0;
+  let n = String(t).replace(/R\$/gi, '').replace(/%/g, '').trim();
+  n = n.replace(/\./g, '').replace(',', '.');
+  return parseFloat(n) || 0;
+}
+function fmtMoney(n) { return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function getSaudacao() { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; }
+function selecionarChip(el) { el.parentElement.querySelectorAll('.chip-select').forEach(c => c.classList.remove('on')); el.classList.add('on'); }
+function getFrequencia() { const on = document.querySelector('#contratos .chip-select.on'); return on ? on.textContent : 'Diária'; }
+
+// ============================================================
+// SCORE
+// ============================================================
+function calcularScore(historico) {
+  if (!historico || historico.length === 0) return { score: 60, pontualidadePct: 0, perfeito: false };
+  const total = historico.length;
+  const pontuais = historico.filter(h => h.atrasoDias <= 0).length;
+  const pct = pontuais / total;
+  const notaHorario = h => h.hora <= 12 ? 10 : h.hora <= 18 ? 7 : h.hora <= 21 ? 4 : 1;
+  const horario = historico.reduce((s, h) => s + notaHorario(h.hora), 0) / total / 10;
+  const metade = Math.floor(total / 2) || 1;
+  const primeira = historico.slice(0, metade);
+  const segunda = historico.slice(metade);
+  const sp = h => (h.filter(x => x.atrasoDias <= 0).length / h.length);
+  const tendencia = segunda.length ? (sp(segunda) - sp(primeira) + 1) / 2 : 0.5;
+  const score = (pct * 0.6 + horario * 0.25 + tendencia * 0.15) * 100;
+  return { score: Math.round(score), pontualidadePct: Math.round(pct * 100), perfeito: pontuais === total };
+}
+function classificarRisco(score) {
+  if (score >= 75) return { label: 'baixo', classe: 'risk-low' };
+  if (score >= 50) return { label: 'médio', classe: 'risk-mid' };
+  return { label: 'alto', classe: 'risk-high' };
+}
+
+// ============================================================
+// CLIENTES
+// ============================================================
+function initClientes() {
+  if (clientesDB.length === 0) {
+    clientesDB = [
+      { id: 'joao', assinanteId: 'demo1', iniciais: 'JS', nome: 'João Silva', doc: '123.***.***-00', tel: '(27) 9****-1234', sms: '(27) 9****-1234', insta: '@joao', chavePix: 'joao@email.com', endereco: 'R. das Flores, 123', regiao: 'Zona Norte', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 0, valorParcela: 0, jurosDia: 0, historico: [{ atrasoDias: 0, hora: 9 }, { atrasoDias: 0, hora: 8 }, { atrasoDias: 0, hora: 10 }, { atrasoDias: 0, hora: 8 }, { atrasoDias: -1, hora: 20 }] },
+      { id: 'carlos', assinanteId: 'demo1', iniciais: 'CA', nome: 'Carlos Antunes', doc: '456.***.***-11', tel: '(27) 9****-5678', sms: '(27) 9****-5678', insta: '@carlos', chavePix: '(27) 99999-5678', endereco: 'Av. Central, 456', regiao: 'Zona Sul', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 180, valorParcela: 60, jurosDia: 12, historico: [{ atrasoDias: 3, hora: 22 }, { atrasoDias: 1, hora: 21 }, { atrasoDias: 2, hora: 23 }, { atrasoDias: 0, hora: 19 }, { atrasoDias: 4, hora: 22 }] },
+      { id: 'mariana', assinanteId: 'demo1', iniciais: 'MS', nome: 'Mariana Santos', doc: '789.***.***-22', tel: '(27) 9****-9012', sms: '(27) 9****-9012', insta: '@mariana', chavePix: '789.***.***-22', endereco: 'R. dos Ipês, 78', regiao: 'Centro', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 650, valorParcela: 105, jurosDia: 30, historico: [{ atrasoDias: 0, hora: 15 }, { atrasoDias: 1, hora: 19 }, { atrasoDias: 0, hora: 14 }, { atrasoDias: 0, hora: 16 }, { atrasoDias: 0, hora: 13 }] },
+    ];
+  }
+}
+// Retorna o registro completo do cliente atualmente logado (fonte única de verdade do saldo/score dele)
+function clienteLogado() {
+  if (perfilAtual !== 'cliente' || !usuarioAtual) return null;
+  return clientesDB.find(c => c.id === usuarioAtual.clienteId) || null;
+}
+
+function renderizarClientes() {
+  const lista = document.getElementById('listaClientes');
+  if (!lista) return;
+  const meusClientes = clientesDoAssinante();
+  lista.innerHTML = meusClientes.map(c => {
+    const { score } = calcularScore(c.historico);
+    const risco = classificarRisco(score);
+    const ultimo = c.historico.length > 0 ? c.historico[c.historico.length - 1] : null;
+    const situacao = ultimo && ultimo.atrasoDias > 0 ? '⏰ Atrasado' : '✅ Em dia';
+    const cor = situacao.includes('Atrasado') ? 'var(--error)' : 'var(--primary)';
+    const avatarConteudo = c.foto ? `<img src="${c.foto}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : c.iniciais;
+    return `<div class="client-item">
+      <div class="avatar ${score >= 75 ? 'avatar-premium' : ''}">${avatarConteudo}</div>
+      <div class="info">
+        <div class="n">${c.nome} ${score >= 75 ? '🌟' : ''}</div>
+        <div class="s">${c.tel}</div>
+      </div>
+      <span class="badge ${risco.classe}">${score}</span>
+      <span style="font-size:10px;font-weight:700;color:${cor};">${situacao}</span>
+    </div>`;
+  }).join('');
+  const kpi = document.getElementById('kpiClientes');
+  if (kpi) kpi.textContent = meusClientes.length;
+}
+
+function filtrarClientes(valor) {
+  const termo = valor.toLowerCase();
+  const items = document.querySelectorAll('#listaClientes .client-item');
+  items.forEach(item => {
+    const texto = item.textContent.toLowerCase();
+    item.style.display = texto.includes(termo) ? 'flex' : 'none';
+  });
+}
+
+function enviarLinkWhatsApp() {
+  const link = 'https://controle.app/cadastro'; // placeholder — trocar pela URL real de cadastro quando publicar
+  const texto = encodeURIComponent(`Olá! Segue o link para se cadastrar: ${link}`);
+  window.open(`https://wa.me/?text=${texto}`, '_blank');
+  registrarAuditoria('Link de cadastro aberto no WhatsApp', 'Assinante compartilhou o link de cadastro');
+}
+
+// [FRONT-END] mostra uma pequena prévia da foto assim que o arquivo é escolhido
+function previewFoto(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (!input.files || !input.files[0] || !preview) return;
+  const reader = new FileReader();
+  reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+  reader.readAsDataURL(input.files[0]);
+}
+// [BANCO DE DADOS] converte um arquivo de <input type=file> em base64 (dataURL) para guardar no registro do cliente
+function lerArquivoComoBase64(input) {
+  return new Promise((resolve, reject) => {
+    if (!input || !input.files || !input.files[0]) { resolve(null); return; }
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(input.files[0]);
+  });
+}
+
+async function salvarNovoClienteCompleto() {
+  const nome = document.getElementById('novoNome').value.trim();
+  const cpf = document.getElementById('novoCpf').value.trim().replace(/\D/g, '');
+  const insta = document.getElementById('novoInsta').value.trim();
+  const chavePix = document.getElementById('novoChavePix').value.trim();
+  const whats = document.getElementById('novoWhats').value.trim().replace(/\D/g, '');
+  const sms = document.getElementById('novoSms').value.trim().replace(/\D/g, '');
+  const endereco = document.getElementById('novoEndereco').value.trim();
+  const regiao = document.getElementById('novoRegiao').value.trim();
+  const erro = document.getElementById('novoClienteErro');
+
+  const inputFoto = document.getElementById('novoFoto');
+  const inputDocFrente = document.getElementById('novoDocFrente');
+  const inputDocVerso = document.getElementById('novoDocVerso');
+  const inputFachada = document.getElementById('novoFotoFachada');
+
+  // [REGRA DE NEGÓCIO] foto do cliente + documentos + foto da fachada são obrigatórios
+  if (nome.length < 3 || cpf.length !== 11 || whats.length < 10 || !chavePix) {
+    erro.style.display = 'block';
+    erro.textContent = '⚠ Preencha: Nome, CPF (11), WhatsApp e Chave PIX.';
+    return;
+  }
+  if (!inputFoto.files[0] || !inputDocFrente.files[0] || !inputDocVerso.files[0] || !inputFachada.files[0]) {
+    erro.style.display = 'block';
+    erro.textContent = '⚠ Envie: foto do cliente, RG/CNH (frente e verso) e foto da casa/comércio.';
+    return;
+  }
+  // [BACK-END/SEGURANÇA] impede cadastrar CPF que já existe (evita conflito de login entre assinantes)
+  if (cpfJaExiste(cpf)) {
+    erro.style.display = 'block';
+    erro.textContent = '⚠ Este CPF já está cadastrado no sistema.';
+    return;
+  }
+  erro.style.display = 'none';
+
+  const iniciais = nome.split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
+  const cpfMask = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  const [foto, docFrenteFoto, docVersoFoto, fotoFachada] = await Promise.all([
+    lerArquivoComoBase64(inputFoto), lerArquivoComoBase64(inputDocFrente),
+    lerArquivoComoBase64(inputDocVerso), lerArquivoComoBase64(inputFachada)
+  ]);
+
+  const clienteId = 'cli_' + Date.now();
+  const assinanteId = assinanteAtualId();
+
+  clientesDB.push({
+    id: clienteId, assinanteId,
+    iniciais, nome, doc: cpfMask, tel: `(${whats.slice(0,2)}) ${whats.slice(2,7)}-${whats.slice(7)}`,
+    sms: sms || whats, insta: insta || '@' + nome.split(' ')[0].toLowerCase(),
+    chavePix, endereco: endereco || 'Não informado', regiao: regiao || 'Não informada',
+    foto, docFrenteFoto, docVersoFoto, fotoFachada,
+    criadoEm: new Date().toISOString(),
+    capital: 0, valorParcela: 0, jurosDia: 0,
+    historico: []
+  });
+
+  // [BACK-END] cria o login do cliente (por CPF), já vinculado ao assinante correto
+  const novoUsuario = { cpf, nome, perfil: 'cliente', clienteId, assinanteId };
+  usuariosDB.push(novoUsuario);
+  usuariosExtras.push(novoUsuario);
+
+  renderizarClientes();
+  renderizarRenovacoes();
+  renderizarLocalizar();
+  renderizarSelectClienteContrato();
+  registrarAuditoria('Cliente cadastrado', `${nome} - ${cpfMask} 🌟`, { publico: 'admin', assinanteId });
+  salvarEstado();
+
+  const t = document.getElementById('toast');
+  t.textContent = `✅ ${nome} cadastrado com sucesso! Já pode entrar com o CPF. 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+
+  document.getElementById('novoNome').value = '';
+  document.getElementById('novoCpf').value = '';
+  document.getElementById('novoInsta').value = '';
+  document.getElementById('novoChavePix').value = '';
+  document.getElementById('novoWhats').value = '';
+  document.getElementById('novoSms').value = '';
+  document.getElementById('novoEndereco').value = '';
+  document.getElementById('novoRegiao').value = '';
+  inputFoto.value = ''; inputDocFrente.value = ''; inputDocVerso.value = ''; inputFachada.value = '';
+  const prev = document.getElementById('novoFotoPreview');
+  if (prev) { prev.style.display = 'none'; prev.src = ''; }
+}
+
+function scrollToForm() {
+  document.getElementById('cadastrar').scrollTo({ top: 9999, behavior: 'smooth' });
+}
+
+// ============================================================
+// RENOVAÇÕES
+// ============================================================
+function renderizarRenovacoes() {
+  const lista = document.getElementById('listaRenovacoes');
+  if (!lista) return;
+  const analiseCreditoOn = automacoesAtuais().analiseCredito;
+  lista.innerHTML = clientesDoAssinante().map(c => {
+    const { score } = calcularScore(c.historico);
+    const risco = classificarRisco(score);
+    const isPremium = score >= 75;
+    const arriscado = analiseCreditoOn && risco.label !== 'baixo';
+    return `<div class="card ${isPremium ? 'card-glow' : ''}" id="renovCard_${c.id}">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="avatar ${isPremium ? 'avatar-premium' : ''}">${c.iniciais}</div>
+        <div class="info"><div class="n">${c.nome} ${isPremium ? '🌟' : ''}</div><div class="s">Score: ${score} · ${risco.label}${isPremium ? ' · Premium' : ''}</div></div>
+        <span class="badge ${isPremium ? 'gold' : risco.classe}">${score}</span>
+      </div>
+      <div style="font-size:10px;color:var(--grey2);margin-bottom:8px;">Chave PIX: ${c.chavePix || 'Não cadastrada'}</div>
+      ${arriscado ? `
+        <div style="background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.3);color:var(--error);font-size:11px;border-radius:8px;padding:9px;margin-bottom:10px;">⚠ Risco ${risco.label} — a análise de crédito não recomenda aprovar sem revisar.</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--grey2);margin-bottom:10px;cursor:pointer;">
+          <input type="checkbox" id="renovOverride_${c.id}" onchange="document.getElementById('renovAprovarBtn_${c.id}').disabled = !this.checked">
+          Estou ciente do risco e quero aprovar mesmo assim
+        </label>
+      ` : ''}
+      <div class="form-group"><label>Valor solicitado</label><input id="renovValor_${c.id}" placeholder="R$ 0,00" value="500"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" style="flex:1;background:var(--error);color:#fff;border:none;" onclick="negarRenovacao('${c.id}')">❌ Negar</button>
+        <button class="btn-primary" style="flex:1;" id="renovAprovarBtn_${c.id}" onclick="aprovarRenovacao('${c.id}')" ${arriscado ? 'disabled' : ''}>✅ Aprovar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function negarRenovacao(id) {
+  const c = clientesDB.find(x => x.id === id);
+  const t = document.getElementById('toast');
+  t.textContent = `❌ Proposta de ${c.nome} negada.`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+  registrarAuditoria('Proposta negada', c.nome, { publico: 'cliente', clienteId: c.id });
+  document.getElementById(`renovCard_${id}`).remove();
+  salvarEstado();
+}
+
+function aprovarRenovacao(id) {
+  const c = clientesDB.find(x => x.id === id);
+  const input = document.getElementById(`renovValor_${c.id}`);
+  const valor = parseNumeroBR(input.value);
+  if (valor <= 0 || !c.chavePix) {
+    const t = document.getElementById('toast');
+    t.textContent = '⚠ Valor inválido ou chave PIX não cadastrada.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+
+  // grava o empréstimo de verdade na conta do cliente — antes só mostrava o
+  // toast "enviado" e não atualizava nada, o cliente nunca via o valor no portal dele
+  const parcelas = 10;
+  const total = valor * 1.20; // mesma taxa padrão de 20% usada no gerador de contrato
+  const parcela = total / parcelas;
+  c.capital = Math.round((c.capital + total) * 100) / 100;
+  c.valorParcela = Math.round(parcela * 100) / 100;
+  c.jurosDia = Math.round(parcela * 0.15 * 100) / 100;
+
+  const t = document.getElementById('toast');
+  t.textContent = `💰 ${fmtMoney(valor)} enviado para ${c.nome} (${c.chavePix}) 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Proposta aprovada', `${c.nome} - ${fmtMoney(valor)} via PIX, ${parcelas}x de ${fmtMoney(parcela)} 🌟`, { publico: 'cliente', clienteId: c.id });
+  document.getElementById(`renovCard_${c.id}`).remove();
+  renderizarClientes();
+  atualizarDashboard();
+  salvarEstado();
+}
+
+// ============================================================
+// COBRANÇA
+// ============================================================
+// ============================================================
+// DASHBOARD (KPIs reais, calculados a partir da base do assinante logado —
+// antes eram valores fixos no HTML)
+// ============================================================
+function atualizarDashboard() {
+  const dash = document.getElementById('dashboard');
+  if (!dash) return; // ainda não montou a tela
+
+  const meusClientes = clientesDoAssinante();
+  const minhaId = assinanteAtualId();
+
+  const capitalInvestido = meusClientes.reduce((s, c) => s + (c.capital || 0), 0);
+  const clientesAtivos = meusClientes.filter(c => c.capital > 0).length;
+  const inadimplentes = meusClientes.filter(c => {
+    if (c.capital <= 0) return false;
+    const { score } = calcularScore(c.historico);
+    return classificarRisco(score).label !== 'baixo';
+  }).length;
+
+  const hoje = new Date();
+  const mesmoDia = (iso, d) => iso && new Date(iso).toDateString() === d.toDateString();
+  const mesmoMes = iso => { if (!iso) return false; const d = new Date(iso); return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth(); };
+  const ehPagamento = a => (a.titulo === 'Pagamento cliente' || a.titulo === 'Empréstimo quitado') && typeof a.valor === 'number' && a.assinanteId === minhaId;
+
+  const recebidoHoje = auditoriaLog.filter(a => ehPagamento(a) && mesmoDia(a.quandoISO, hoje)).reduce((s, a) => s + a.valor, 0);
+  const receitaMes = auditoriaLog.filter(a => ehPagamento(a) && mesmoMes(a.quandoISO)).reduce((s, a) => s + a.valor, 0);
+
+  const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setText('kpiCapital', fmtMoney(capitalInvestido));
+  setText('kpiRecebido', fmtMoney(recebidoHoje));
+  setText('kpiClientes', clientesAtivos);
+  setText('kpiInadimplentes', inadimplentes);
+  setText('receitaMes', fmtMoney(receitaMes));
+
+  // gráfico dos últimos 7 dias, somando pagamentos reais por dia
+  const dias = [];
+  for (let i = 6; i >= 0; i--) { const d = new Date(hoje); d.setDate(d.getDate() - i); dias.push(d); }
+  const totalDoDia = d => auditoriaLog.filter(a => ehPagamento(a) && mesmoDia(a.quandoISO, d)).reduce((s, a) => s + a.valor, 0);
+  const valoresSemana = dias.map(totalDoDia);
+  const maxValor = Math.max(...valoresSemana, 1);
+
+  const chart = document.getElementById('chartBarras');
+  if (chart) {
+    chart.innerHTML = valoresSemana.map((v, i) => {
+      const altura = Math.max(6, Math.round((v / maxValor) * 100));
+      const hojeBarra = i === valoresSemana.length - 1;
+      return `<div class="bar" style="height:${altura}%${hojeBarra ? ';background:linear-gradient(180deg, var(--secondary), rgba(41,182,246,0.3))' : ''}"><span class="tooltip">${fmtMoney(v)}</span></div>`;
+    }).join('');
+  }
+  const labels = dash.querySelector('.chart-labels');
+  if (labels) {
+    const nomesDias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    labels.innerHTML = dias.map(d => `<span>${nomesDias[d.getDay()]}</span>`).join('');
+  }
+
+  // cobranças de hoje: só quem realmente deve, nada de nome fixo no HTML
+  const cobrancasEl = document.getElementById('cobrancasHoje');
+  const badge = dash.querySelector('.badge-count');
+  if (cobrancasEl) {
+    const devedores = meusClientes.filter(c => c.capital > 0);
+    if (badge) badge.textContent = `${devedores.length} pendente${devedores.length === 1 ? '' : 's'}`;
+    cobrancasEl.innerHTML = devedores.length === 0
+      ? '<div style="color:var(--grey2);font-size:11px;padding:12px 0;text-align:center;">✅ Nenhuma cobrança pendente hoje.</div>'
+      : devedores.map(c => {
+        const { score } = calcularScore(c.historico);
+        const atrasado = classificarRisco(score).label !== 'baixo';
+        return `<div class="row-item">
+          <div class="name-col"><div class="n">${c.nome}</div><div class="v">${fmtMoney(c.valorParcela)}</div></div>
+          <div class="status-col" style="color:${atrasado ? 'var(--error)' : 'var(--primary)'}">${atrasado ? '⏰ Atrasado' : '🟡 Em aberto'}</div>
+          <div class="action-col"><button class="chip-btn" style="background:${atrasado ? 'var(--error)' : 'var(--surface3)'};color:${atrasado ? '#fff' : 'var(--grey)'}" onclick="cobrarComIA('${c.id}')">🤖 Cobrar</button></div>
+        </div>`;
+      }).join('');
+  }
+}
+
+function cobrarComIA(id) {
+  const c = clientesDB.find(x => x.id === id);
+  if (!c) return;
+  const t = document.getElementById('toast');
+  if (!automacoesAtuais().cobrancaIA) {
+    t.textContent = '⏸ Automação de Cobrança IA está desligada em Configurações.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+  t.textContent = `🤖 IA enviou cobrança para ${c.nome} 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+  registrarAuditoria('Cobrança IA', `${c.nome} - mensagem personalizada 🌟`, { publico: 'cliente', clienteId: c.id });
+}
+
+function cobrarTodosAtrasados() {
+  const t = document.getElementById('toast');
+  if (!automacoesAtuais().cobrancaIA) {
+    t.textContent = '⏸ Automação de Cobrança IA está desligada em Configurações.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+  const atrasados = clientesDoAssinante().filter(c => c.historico.length > 0 && c.historico[c.historico.length - 1].atrasoDias > 0);
+  atrasados.forEach(c => cobrarComIA(c.id));
+  t.textContent = `🤖 IA cobrou ${atrasados.length} cliente(s) atrasado(s) 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// CONTRATOS
+// ============================================================
+function gerarContratoIA() {
+  const texto = document.getElementById('iaContratoInput').value.trim();
+  if (!texto) return;
+  const valor = texto.match(/r?\$?\s?(\d+([.,]\d+)?)/i);
+  const parcelas = texto.match(/(\d+)\s*parcelas?/i);
+  const nome = texto.match(/para\s+([A-ZÀ-Ú][a-zà-ú]+(\s[A-ZÀ-Ú][a-zà-ú]+)?)/);
+  if (valor) document.getElementById('valorEmprestado').value = valor[1].replace(',', '.');
+  if (parcelas) document.getElementById('qtdParcelas').value = parcelas[1];
+  const t = document.getElementById('toast');
+  if (nome) {
+    const alvo = clientesDoAssinante().find(c => c.nome.toLowerCase().includes(nome[1].toLowerCase()));
+    if (alvo) {
+      document.getElementById('clienteContrato').value = alvo.id;
+    } else {
+      t.textContent = `⚠ Não achei nenhum cliente chamado "${nome[1]}" — cadastre antes.`;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+  }
+  t.textContent = '🤖 IA preencheu o contrato! 🌟';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+  gerarParcelasComIA();
+}
+
+// Preenche o <select> de clientes na tela de Contratos só com quem pertence
+// ao assinante logado — sem isso não dava pra saber pra quem o dinheiro ia de verdade.
+function renderizarSelectClienteContrato() {
+  const select = document.getElementById('clienteContrato');
+  if (!select) return;
+  const meusClientes = clientesDoAssinante();
+  const atual = select.value;
+  select.innerHTML = meusClientes.length === 0
+    ? '<option value="">Nenhum cliente cadastrado</option>'
+    : meusClientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  if (meusClientes.some(c => c.id === atual)) select.value = atual;
+}
+
+// Aplica o empréstimo de verdade no cliente selecionado (saldo, parcela e juros
+// passam a existir na conta dele — antes essa tela só calculava e mostrava
+// uma prévia, sem nunca gravar nada em nenhum cliente real).
+function confirmarContrato() {
+  const t = document.getElementById('toast');
+  const clienteId = document.getElementById('clienteContrato').value;
+  const cliente = clientesDB.find(c => c.id === clienteId);
+  if (!cliente) {
+    t.textContent = '⚠ Selecione um cliente cadastrado antes de confirmar.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+
+  const valor = parseNumeroBR(document.getElementById('valorEmprestado').value);
+  const parcelas = Math.max(1, parseInt(document.getElementById('qtdParcelas').value) || 1);
+  const taxa = parseNumeroBR(document.getElementById('taxaJuros').value);
+  const tipo = document.getElementById('tipoJuros').value === 'composto';
+  const freq = getFrequencia();
+
+  if (valor <= 0) {
+    t.textContent = '⚠ Informe um valor válido.';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+    return;
+  }
+
+  const total = tipo
+    ? valor * Math.pow(1 + taxa / 100, (freq === 'Diária' ? 1 : freq === 'Semanal' ? 7 : freq === 'Mensal' ? 30 : 15) / 30 * parcelas)
+    : valor * (1 + taxa / 100);
+  const parcela = total / parcelas;
+
+  // soma ao saldo já existente (se o cliente já tiver um débito em aberto)
+  cliente.capital = Math.round((cliente.capital + total) * 100) / 100;
+  cliente.valorParcela = Math.round(parcela * 100) / 100;
+  cliente.jurosDia = Math.round(parcela * 0.15 * 100) / 100;
+
+  registrarAuditoria('Contrato gerado', `${cliente.nome} - ${fmtMoney(valor)} em ${parcelas}x (total ${fmtMoney(total)}) 🌟`, { publico: 'admin', clienteId: cliente.id, valor: total });
+  renderizarClientes();
+  renderizarRenovacoes();
+  atualizarDashboard();
+  salvarEstado();
+
+  t.textContent = `✅ Empréstimo de ${fmtMoney(valor)} liberado para ${cliente.nome}! 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function gerarParcelasComIA() {
+  const valor = parseNumeroBR(document.getElementById('valorEmprestado').value);
+  const parcelas = Math.max(1, parseInt(document.getElementById('qtdParcelas').value) || 1);
+  const taxa = parseNumeroBR(document.getElementById('taxaJuros').value);
+  const tipo = document.getElementById('tipoJuros').value === 'composto';
+  const freq = getFrequencia();
+
+  if (valor <= 0) {
+    document.getElementById('parcelasResultado').innerHTML = '<div style="color:var(--error);font-size:11px;text-align:center;padding:10px;">⚠ Informe um valor válido.</div>';
+    return;
+  }
+
+  let total = tipo ? valor * Math.pow(1 + taxa / 100, (freq === 'Diária' ? 1 : freq === 'Semanal' ? 7 : freq === 'Mensal' ? 30 : 15) / 30 * parcelas) : valor * (1 + taxa / 100);
+  const parcela = total / parcelas;
+  document.getElementById('calcTotal').textContent = fmtMoney(total);
+  document.getElementById('calcParcela').textContent = fmtMoney(parcela);
+
+  let saldo = total;
+  let data = new Date();
+  let html = `<div class="section-title">📄 Contrato gerado 🌟</div><div style="font-size:10px;color:var(--grey2);margin-bottom:8px;">Total: ${fmtMoney(total)} · ${parcelas}x de ${fmtMoney(parcela)}</div>`;
+  for (let i = 1; i <= Math.min(parcelas, 10); i++) {
+    data.setDate(data.getDate() + (freq === 'Diária' ? 1 : freq === 'Semanal' ? 7 : freq === 'Mensal' ? 30 : 15));
+    saldo = Math.max(0, saldo - parcela);
+    html += `<div class="agenda-item"><div class="dot2" style="background:var(--secondary)"></div><div class="info"><div class="n">Parcela ${i}</div><div class="s">${data.toLocaleDateString('pt-BR')}</div></div><div class="amt">${fmtMoney(parcela)}</div></div>`;
+  }
+  if (parcelas > 10) html += `<div style="color:var(--grey2);font-size:10px;text-align:center;padding:8px;">+ ${parcelas - 10} parcelas</div>`;
+  document.getElementById('parcelasResultado').innerHTML = html;
+  registrarAuditoria('Contrato gerado', `${fmtMoney(valor)} em ${parcelas}x 🌟`);
+}
+
+// ============================================================
+// CLIENTE PORTAL
+// ============================================================
+// [FRONT-END] Painel do cliente: saldo, foto, mensagem de quitação e proposta de renovação
+// sempre calculados a partir do PRÓPRIO cliente logado (antes usava um estado global genérico).
+function clienteAtualizarUI() {
+  const c = clienteLogado();
+  if (!c) return;
+
+  const foto = document.getElementById('clienteFoto');
+  if (foto) {
+    if (c.foto) { foto.src = c.foto; foto.style.display = 'block'; }
+    else { foto.style.display = 'none'; }
+  }
+
+  const semDivida = c.capital <= 0;
+  const d = document.getElementById('clienteDebitoVal');
+  if (d) d.textContent = fmtMoney(c.capital);
+  document.getElementById('clienteQuitarVal').textContent = fmtMoney(c.capital);
+  const btn = document.getElementById('clienteQuitarBtn');
+  btn.textContent = `🎉 Quitar (${fmtMoney(c.capital)})`;
+  btn.disabled = semDivida;
+  btn.style.opacity = semDivida ? 0.5 : 1;
+
+  document.getElementById('clienteBotoesPagamento').style.display = semDivida ? 'none' : 'flex';
+  document.getElementById('clienteQuitarCard').style.display = semDivida ? 'none' : 'block';
+  document.getElementById('debitoBox').style.display = semDivida ? 'none' : 'block';
+  const centralAcordos = document.getElementById('centralAcordos');
+  if (centralAcordos) centralAcordos.style.display = semDivida ? 'none' : 'block';
+  const parcBtn = document.querySelector('#clienteBotoesPagamento .btn-primary');
+  const jurosBtn = document.querySelector('#clienteBotoesPagamento .btn-secondary');
+  if (parcBtn) parcBtn.textContent = `💳 Pagar parcela (${fmtMoney(c.valorParcela)})`;
+  if (jurosBtn) jurosBtn.textContent = `📅 Pagar juros (${fmtMoney(c.jurosDia)})`;
+
+  // [REGRA DE NEGÓCIO] dívida zerada → parabéns + oferta de novo empréstimo (se score alto, também botão de renovação imediata)
+  const painelSemDivida = document.getElementById('clienteSemDivida');
+  if (painelSemDivida) {
+    if (semDivida) {
+      const { score } = calcularScore(c.historico);
+      const risco = classificarRisco(score);
+      const scoreAlto = score >= 75;
+      painelSemDivida.style.display = 'block';
+      painelSemDivida.innerHTML = `
+        <div class="section-title" style="margin-top:0;">🎉 Parabéns e obrigado pela preferência!</div>
+        <div style="color:var(--grey2);font-size:12px;margin-bottom:14px;">Você está com o crédito em dia, ${c.nome.split(' ')[0]}.</div>
+        ${scoreAlto ? `
+          <div style="font-size:11px;color:var(--grey2);margin-bottom:8px;">Seu score é ${score} (risco ${risco.label}) — você já pode renovar na hora.</div>
+          <button class="btn-glow" onclick="pedirRenovacaoImediata()">🌟 Proposta de Renovação</button>
+        ` : `
+          <div class="form-group"><label>Quero um novo empréstimo de</label><input id="clienteValorNovoEmprestimo" placeholder="R$ 0,00" value="500"></div>
+          <button class="btn-secondary" onclick="solicitarNovoEmprestimo()">📤 Enviar pedido para aprovação</button>
+        `}
+      `;
+    } else {
+      painelSemDivida.style.display = 'none';
+    }
+  }
+
+  renderizarClienteScore(c);
+  renderizarTempoContaCliente(c);
+}
+
+// [FRONT-END] tempo de assinatura/conta ativa do cliente, calculado a partir da data de cadastro
+function renderizarTempoContaCliente(c) {
+  const el = document.getElementById('clienteTempoAtivo');
+  if (!el || !c.criadoEm) { if (el) el.textContent = '—'; return; }
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(c.criadoEm).getTime()) / 86400000));
+  if (dias < 1) el.textContent = 'Cadastrado hoje';
+  else if (dias < 30) el.textContent = `${dias} dia${dias > 1 ? 's' : ''} ativo`;
+  else if (dias < 365) el.textContent = `${Math.floor(dias / 30)} mês(es) ativo`;
+  else el.textContent = `${Math.floor(dias / 365)} ano(s) ativo`;
+}
+
+function renderizarClienteScore(clienteParam) {
+  const c = clienteParam || clienteLogado();
+  if (!c) return;
+  const { score } = calcularScore(c.historico);
+  const risco = classificarRisco(score);
+  document.getElementById('clienteScoreVal').textContent = score;
+  document.getElementById('clienteScoreVal').style.color = risco.classe === 'risk-low' ? 'var(--primary)' : risco.classe === 'risk-mid' ? 'var(--tertiary)' : 'var(--error)';
+  document.getElementById('clienteScoreBadge').className = `badge ${risco.classe}`;
+  document.getElementById('clienteScoreBadge').textContent = `Risco ${risco.label}`;
+  document.getElementById('clienteScoreBarra').style.width = score + '%';
+  document.getElementById('clienteScoreBarra').style.background = risco.classe === 'risk-low' ? 'var(--primary)' : risco.classe === 'risk-mid' ? 'var(--tertiary)' : 'var(--error)';
+}
+
+// [REGRA DE NEGÓCIO] cliente em dia e com score alto pede renovação imediata (vai para aprovação do Admin)
+// cliente em dia com score mediano/baixo pede um novo empréstimo com valor (também vai para aprovação do Admin)
+function solicitarNovoEmprestimo(valorForcado) {
+  const c = clienteLogado();
+  if (!c) return;
+  const input = document.getElementById('clienteValorNovoEmprestimo');
+  const valor = valorForcado || (input ? parseNumeroBR(input.value) : 0);
+  if (valor <= 0) return;
+  propostasNovoEmprestimoDB.push({
+    id: 'prop_' + Date.now(), clienteId: c.id, assinanteId: c.assinanteId,
+    valor, status: 'Aguardando Aprovação', quando: new Date().toLocaleString('pt-BR')
+  });
+  registrarAuditoria('Novo empréstimo solicitado', `${c.nome} pediu ${fmtMoney(valor)} 🌟`, { publico: 'admin', clienteId: c.id });
+  renderizarRenovacoes();
+  salvarEstado();
+  const t = document.getElementById('toast');
+  t.textContent = '📤 Pedido enviado! Aguarde a aprovação do Admin. 🌟';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// [REGRA DE NEGÓCIO] botão imediato de renovação para cliente com score alto — sugere valor e já envia para aprovação
+function pedirRenovacaoImediata() {
+  const c = clienteLogado();
+  if (!c) return;
+  const valorSugerido = 500;
+  solicitarNovoEmprestimo(valorSugerido);
+}
+
+function clienteRegistrar(texto, cor) {
+  const hist = document.getElementById('clienteHistorico');
+  const item = document.createElement('div');
+  item.className = 'agenda-item';
+  item.innerHTML = `<div class="dot2" style="background:${cor}"></div><div class="info"><div class="n">${new Date().toLocaleDateString('pt-BR')}</div><div class="s">${texto}</div></div>`;
+  hist.prepend(item);
+}
+
+function criarFogos() {
+  const container = document.createElement('div');
+  container.className = 'fireworks-container';
+  document.body.appendChild(container);
+  const cores = ['#FF5252', '#FFB300', '#FFD700', '#29B6F6', '#B388FF', '#FF4081', '#FFD700'];
+  for (let i = 0; i < 60; i++) {
+    const f = document.createElement('div');
+    f.className = 'firework';
+    f.style.left = Math.random() * window.innerWidth + 'px';
+    f.style.top = Math.random() * window.innerHeight + 'px';
+    f.style.setProperty('--tx', (Math.random() - 0.5) * 450 + 'px');
+    f.style.setProperty('--ty', (Math.random() - 0.5) * 450 + 'px');
+    f.style.background = cores[Math.floor(Math.random() * cores.length)];
+    f.style.width = (Math.random() * 10 + 4) + 'px';
+    f.style.height = f.style.width;
+    f.style.animationDuration = (Math.random() * 1.2 + 0.8) + 's';
+    f.style.animationDelay = (Math.random() * 0.8) + 's';
+    container.appendChild(f);
+  }
+  setTimeout(() => container.remove(), 3500);
+}
+
+function clienteQuitarEmprestimo() {
+  const cliente = clienteLogado();
+  if (!cliente || cliente.capital <= 0) return;
+  const valor = cliente.capital;
+  const nome = cliente.nome;
+
+  cliente.capital = 0;
+  cliente.valorParcela = 0;
+  cliente.jurosDia = 0;
+  clienteAtualizarUI(); // já mostra a mensagem de "parabéns" e o botão de renovação (se score alto)
+
+  document.getElementById('clientePixBox').style.display = 'none';
+  document.querySelector('#cliente .greeting').textContent = 'Bem-vindo, 🎉';
+  criarFogos();
+
+  const t = document.getElementById('toast');
+  t.textContent = `📱 Obrigado ${nome}! Empréstimo quitado! 🎉`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+
+  registrarAuditoria('Empréstimo quitado', `${nome} - ${fmtMoney(valor)} - OBRIGADO! 🌟`, { publico: 'admin', clienteId: cliente.id, valor });
+  salvarEstado();
+}
+
+function negociarDividaIA() {
+  const cliente = clienteLogado();
+  if (!cliente) return;
+  const t0 = document.getElementById('toast');
+  if (!automacoesAtuais().negociacaoAuto) {
+    t0.textContent = '⏸ Negociação automática está desligada pelo seu assinante no momento.';
+    t0.classList.add('show');
+    setTimeout(() => t0.classList.remove('show'), 3000);
+    return;
+  }
+  const nome = cliente.nome;
+  const divida = cliente.capital;
+  if (divida <= 0) {
+    const t = document.getElementById('toast');
+    t.textContent = '🎉 Você não tem dívidas! 🌟';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+    return;
+  }
+  // taxa de renegociação de 15% — clara e avisada antes de confirmar (não é
+  // multiplicar a dívida, é parcelar o que já é devido + um custo de renegociar)
+  const novoTotal = divida * 1.15;
+  const parcela = novoTotal / 10;
+  const t = document.getElementById('toast');
+  t.textContent = `🤖 IA Premium: ${nome}, parcelar em 10x de ${fmtMoney(parcela)} (com 15% de taxa de renegociação)? 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  setTimeout(() => {
+    if (confirm(`💰 ${nome}, sua dívida de ${fmtMoney(divida)} passa para ${fmtMoney(novoTotal)} (+15% de renegociação), em 10x de ${fmtMoney(parcela)}. Confirmar?`)) {
+      cliente.capital = novoTotal;
+      cliente.valorParcela = parcela;
+      cliente.jurosDia = parcela * 0.05;
+      clienteAtualizarUI();
+      clienteRegistrar(`Acordo: 10x de ${fmtMoney(parcela)}`, 'var(--purple)');
+      registrarAuditoria('Acordo IA', `${nome} - ${fmtMoney(divida)} renegociado (+15%) em 10x 🌟`, { publico: 'admin', clienteId: cliente.id });
+      const t2 = document.getElementById('toast');
+      t2.textContent = `✅ Acordo Premium fechado! 10x de ${fmtMoney(parcela)} 🌟`;
+      t2.classList.add('show');
+      setTimeout(() => t2.classList.remove('show'), 3000);
+      salvarEstado();
+    }
+  }, 1500);
+}
+
+// ============================================================
+// PIX
+// ============================================================
+let clientePixTimeoutId = null;
+
+function abrirPixCobranca(tipo) {
+  const cliente = clienteLogado();
+  if (!cliente || cliente.capital <= 0) {
+    const t = document.getElementById('toast');
+    t.textContent = '🎉 Você não tem débitos! 🌟';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+    return;
+  }
+  const valor = tipo === 'parcela' ? cliente.valorParcela : cliente.jurosDia;
+  document.getElementById('clientePixTitulo').textContent = tipo === 'parcela' ? '💳 Pagar parcela' : '📅 Pagar juros';
+  document.getElementById('clientePixValor').textContent = fmtMoney(valor);
+  document.getElementById('clientePixChave').textContent = dadosAssinanteAtual()?.chavePix || 'chave não cadastrada';
+  document.getElementById('clientePixBox').style.display = 'block';
+  document.getElementById('clientePixBox').scrollIntoView({ behavior: 'smooth' });
+  if (clientePixTimeoutId) clearTimeout(clientePixTimeoutId);
+  clientePixTimeoutId = setTimeout(() => {
+    if (tipo === 'parcela') {
+      cliente.capital = Math.max(0, cliente.capital - cliente.valorParcela);
+      clienteRegistrar(`Parcela ${fmtMoney(cliente.valorParcela)} paga ✅`, 'var(--primary)');
+      registrarAuditoria('Pagamento cliente', `Parcela ${fmtMoney(cliente.valorParcela)} paga por ${cliente.nome} ✅`, { publico: 'admin', clienteId: cliente.id, valor: cliente.valorParcela });
+    } else {
+      // pagar só o juros renova o empréstimo sem abater o capital
+      clienteRegistrar(`Juros do dia ${fmtMoney(cliente.jurosDia)} pagos — empréstimo renovado ✅`, 'var(--tertiary)');
+      registrarAuditoria('Pagamento cliente', `Juros ${fmtMoney(cliente.jurosDia)} pagos por ${cliente.nome} (renovação) ✅`, { publico: 'admin', clienteId: cliente.id, valor: cliente.jurosDia });
+    }
+    clienteAtualizarUI();
+    document.getElementById('clientePixStatus').textContent = '✅ Pagamento confirmado! Obrigado! 🌟';
+    document.getElementById('clientePixStatus').style.color = 'var(--primary)';
+    setTimeout(() => { document.getElementById('clientePixBox').style.display = 'none'; }, 2000);
+    salvarEstado();
+  }, 3500);
+}
+
+// ============================================================
+// LOCALIZAÇÃO
+// ============================================================
+function capturarLocalizacaoCliente(id, nome) {
+  if (!id || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      localizacoesDB[id] = { lat: pos.coords.latitude, lng: pos.coords.longitude, quando: new Date().toLocaleString('pt-BR') };
+      if (solicitacoesLocalizacao[id]) {
+        delete solicitacoesLocalizacao[id];
+        registrarAuditoria('📍 Localização', `${nome} compartilhou localização 🌟`, { publico: 'admin', clienteId: id });
+      }
+      renderizarLocalizar();
+      salvarEstado();
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function solicitarLocalizacao(id) {
+  const c = clientesDB.find(x => x.id === id);
+  if (!c) return;
+  solicitacoesLocalizacao[id] = true;
+  const t = document.getElementById('toast');
+  t.textContent = `📱 Pedido enviado a ${c.nome}. Aguarde abrir o app. 🌟`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Solicitação localização', c.nome, { publico: 'cliente', clienteId: c.id });
+  renderizarLocalizar();
+  salvarEstado();
+}
+
+// [FRONT-END/FILTRO] Tela do cobrador: mostra só Nome, CPF e Região — sem WhatsApp — e só clientes
+// que estão devendo (capital > 0). Clientes em dia não aparecem na rota do cobrador.
+function renderizarRotaCobrador() {
+  const lista = document.getElementById('listaRotaCobrador');
+  if (!lista) return;
+  const devedores = clientesDoAssinante().filter(c => c.capital > 0);
+  lista.innerHTML = devedores.length === 0
+    ? '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">✅ Nenhum cliente devendo hoje.</div>'
+    : devedores.map(c => `
+      <div class="agenda-item">
+        <div class="dot2" style="background:var(--error)"></div>
+        <div class="info"><div class="n">${c.nome}</div><div class="s">${c.doc} · ${c.regiao || 'Região não informada'}</div></div>
+        <button class="btn-ir" onclick="abrirRota('${c.nome}','${c.endereco}')">Ir ▸</button>
+      </div>
+    `).join('');
+  const contagem = document.getElementById('cobradorContagem');
+  if (contagem) contagem.textContent = `${devedores.length} pendente${devedores.length === 1 ? '' : 's'}`;
+}
+
+function renderizarLocalizar() {
+  const lista = document.getElementById('listaLocalizar');
+  if (!lista) return;
+  lista.innerHTML = clientesDoAssinante().map(c => {
+    const loc = localizacoesDB[c.id];
+    const aguardando = !!solicitacoesLocalizacao[c.id];
+    let status = aguardando ? '🟡 Aguardando...' : loc ? `🟢 ${loc.quando}` : '⚪ Sem localização';
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <div class="avatar">${c.iniciais}</div>
+        <div class="info"><div class="n">${c.nome}</div><div class="s">${c.tel}</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--grey2);margin-bottom:10px;">${status}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" style="flex:1;background:var(--secondary);color:#000;border:none;" onclick="solicitarLocalizacao('${c.id}')">📍 Solicitar</button>
+        ${loc ? `<button class="btn-primary" style="flex:1;background:var(--primary);color:#000;" onclick="abrirRota('${c.nome}','${loc.lat},${loc.lng}')">🗺 Ver</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// IA CHAT
+// ============================================================
+const baseSuporte = [
+  { chaves: ['score', 'risco'], resposta: 'Score vai de 0 a 100. Acima de 75 = PREMIUM 🌟, 50-74 = médio, abaixo = alto.' },
+  { chaves: ['atrasado', 'quem está atrasado'], resposta: 'Carlos Antunes está atrasado há 3 dias com R$ 180,00.' },
+  { chaves: ['analisar', 'joão'], resposta: 'João Silva: score 78, PREMIUM 🌟. Histórico perfeito. Recomendado para crédito.' },
+  { chaves: ['relatório', 'mês'], resposta: 'Receita do mês: R$ 18.430. Inadimplência: 8%. 128 clientes. 🌟' },
+  { chaves: ['obrigado', 'agradecimento'], resposta: 'De nada! Estamos aqui para ajudar! 🌟😊' },
+  { chaves: ['premium', 'como ser premium'], resposta: 'Para ser PREMIUM 🌟, mantenha score acima de 75 pagando todas as parcelas em dia!' },
+];
+
+function responderSuporte(texto) {
+  const t = texto.toLowerCase();
+  for (const item of baseSuporte) {
+    if (item.chaves.some(c => t.includes(c))) return item.resposta;
+  }
+  if (/r\$|\bparcelas?\b/.test(t)) return '🤖 Processando... 🌟';
+  if (/obrigado|valeu|grato/i.test(t)) return '😊 Por nada! Conte sempre com a Control$ Premium! 🌟';
+  return '🤖 Pergunte sobre: score, atrasados, análise, relatórios, agradecimentos ou como ser PREMIUM 🌟.';
+}
+
+function enviarChat() {
+  const input = document.getElementById('chatInput');
+  const texto = input.value.trim();
+  if (!texto) return;
+  perguntar(texto);
+  input.value = '';
+}
+
+function perguntar(texto) {
+  const scroll = document.getElementById('chatScroll');
+  const user = document.createElement('div');
+  user.className = 'msg user';
+  user.textContent = texto;
+  scroll.appendChild(user);
+  scroll.scrollTop = scroll.scrollHeight;
+
+  setTimeout(() => {
+    const bot = document.createElement('div');
+    bot.className = 'msg bot';
+    bot.innerHTML = `<span class="tag">🧠 IA Premium</span>${responderSuporte(texto)}`;
+    scroll.appendChild(bot);
+    scroll.scrollTop = scroll.scrollHeight;
+    registrarAuditoria('Chat IA Premium', texto);
+  }, 500);
+}
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+function init() {
+  carregarEstado();
+  initClientes();
+  renderizarClientes();
+  renderizarRenovacoes();
+  renderizarLocalizar();
+  renderizarHistorico();
+  renderizarCobradores();
+  clienteAtualizarUI();
+  atualizarDashboard();
+  renderizarSelectClienteContrato();
+  atualizarBotaoLoginRapido();
+  criarParticulas();
+  atualizarNomesAdmin();
+  salvarEstado();
+
+  const splash = document.getElementById('splash');
+  setTimeout(() => {
+    splash.classList.add('splash-fadeout');
+    setTimeout(() => { show('login'); }, 480);
+  }, 1900);
+
+  iniciarRelogio();
+}
+
+// [FRONT-END] Relógio/data em tempo real no topo do app, atualizado a cada segundo em qualquer tela aberta
+function iniciarRelogio() {
+  function atualizar() {
+    const agora = new Date();
+    const clock = document.getElementById('sbClock');
+    const data = document.getElementById('sbData');
+    if (clock) clock.textContent = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (data) data.textContent = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+  atualizar();
+  setInterval(atualizar, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
