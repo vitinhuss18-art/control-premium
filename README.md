@@ -8,7 +8,8 @@ SaaS profissional para gestão de clientes, propostas, empréstimos, parcelas, p
 - interface visual congelada;
 - monorepo Next.js/TypeScript iniciado;
 - domínio e integrações separados;
-- Supabase preparado por migrações;
+- banco multiempresa, RLS e permissões preparados por migrações;
+- testes de isolamento, dados fictícios e roteiro de restauração versionados;
 - testes, lint, tipos, build e CI configurados;
 - conexões externas reunidas em `docs/PENDENCIAS_FINAIS.md`.
 
@@ -32,4 +33,8 @@ npm run build
 npm run test:e2e
 ```
 
-Consulte [`docs/EXECUCAO.md`](docs/EXECUCAO.md) para ambientes e execução completa.
+Consulte:
+
+- [`docs/EXECUCAO.md`](docs/EXECUCAO.md) para ambientes e execução;
+- [`docs/MODELO_DE_DADOS.md`](docs/MODELO_DE_DADOS.md) para banco e permissões;
+- [`docs/BACKUP_E_RESTAURACAO.md`](docs/BACKUP_E_RESTAURACAO.md) para recuperação.
