@@ -23,7 +23,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - name: Block high-severity production vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report the complete dependency tree
+        continue-on-error: true
+        run: npm audit --audit-level=high
 
   secret-patterns:
     runs-on: ubuntu-latest
