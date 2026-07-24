@@ -1,0 +1,38 @@
+{
+  "name": "control-premium",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @control-premium/web",
+    "build": "npm run build --workspace @control-premium/web",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.11",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.23",
+      "sharp": "0.35.3"
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
