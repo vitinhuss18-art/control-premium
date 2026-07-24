@@ -773,6 +773,47 @@
 
   .screen { position: relative; z-index: 1; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Configuração do Supabase - usar variáveis de ambiente
+  const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://seu-projeto.supabase.co';
+  const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sua-anon-key';
+  
+  let supabase = null;
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✓ Supabase inicializado');
+  } catch(e) {
+    console.warn('⚠ Supabase não configurado - usando localStorage apenas', e.message);
+  }
+  
+  // Verificar autenticação ao carregar
+  if (supabase) {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        console.log('✓ Usuário autenticado:', data.session.user.email);
+      } else {
+        console.log('⚠ Nenhum usuário autenticado');
+      }
+    });
+  }
+
+  // [SUPABASE] Envia um novo cliente para a tabela public.clients.
+  // Requer que o usuário logado tenha um tenant_id em public.profiles (RLS aplica isso).
+  // Se o Supabase não estiver configurado, retorna sem fazer nada (fluxo local continua intacto).
+  async function sincronizarClienteComSupabase({ nome, cpfMask, whats, chavePix, endereco, regiao }) {
+    if (!supabase) return;
+    const cpfLimpo = (cpfMask || '').replace(/\D/g, '');
+    const { error } = await supabase.from('clients').insert({
+      full_name: nome,
+      cpf: cpfLimpo,
+      phone: whats,
+      metadata: { chave_pix: chavePix || null, endereco: endereco || null, regiao: regiao || null }
+    });
+    if (error) throw error;
+    console.log('✓ Cliente sincronizado com Supabase:', nome);
+  }
+</script>
 </head>
 <body>
 
@@ -2048,6 +2089,13 @@ async function salvarNovoClienteCompleto() {
   const novoUsuario = { cpf, nome, perfil: 'cliente', clienteId, assinanteId };
   usuariosDB.push(novoUsuario);
   usuariosExtras.push(novoUsuario);
+
+  // [SUPABASE] Sincronização best-effort com o banco real (public.clients).
+  // Não bloqueia nem quebra o fluxo local: se o Supabase não estiver configurado
+  // ou a chamada falhar, o cadastro continua funcionando normalmente via localStorage.
+  sincronizarClienteComSupabase({
+    nome, cpfMask, whats, chavePix, endereco, regiao
+  }).catch(e => console.warn('⚠ Cliente salvo localmente, mas falhou ao sincronizar com Supabase:', e.message));
 
   renderizarClientes();
   renderizarRenovacoes();
