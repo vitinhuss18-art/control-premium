@@ -23,8 +23,8 @@ Nenhuma chave, token, senha, certificado ou segredo deverá ser enviado em conve
 6. Salvar no GitHub cada entrega aprovada e validada.
 7. Não salvar segredos no GitHub.
 8. Usar dados fictícios durante desenvolvimento e homologação.
-9. Não movimentar dinheiro real antes da validação do PIX em sandbox e dos controles financeiros.
-10. Não enviar mensagens reais antes da validação do WhatsApp em ambiente de teste e da política de comunicação.
+9. Conectar a conta PIX real do proprietário desde o início, usando primeiro o modo de homologação do próprio provedor quando disponível; movimentar dinheiro somente no teste final autorizado.
+10. Conectar a conta e o número reais de WhatsApp do proprietário desde o início; limitar os primeiros envios ao proprietário e aos destinatários de teste autorizados.
 11. Não permitir acesso entre empresas diferentes.
 12. Não permitir que IA aprove ou negue crédito sozinha.
 13. Registrar todas as alterações financeiras e ações sensíveis em auditoria.
@@ -82,22 +82,22 @@ Uma etapa somente estará concluída quando:
 
 Marco A: protótipo preservado e escopo congelado.
 
-### Bloco B - Primeiras conexões externas em modo de teste
+### Bloco B - Primeiras conexões usando as contas reais do proprietário
 
-11. Escolher provedor PIX com API, sandbox, webhook, idempotência e documentação.
-12. Proprietário criar ou conectar a conta empresarial PIX verificada.
+11. Escolher provedor PIX com API, homologação, webhook, idempotência e documentação.
+12. Proprietário conectar sua conta PIX real e verificada.
 13. Codex criar apenas os nomes das variáveis PIX em `.env.example`, sem valores.
 14. Proprietário cadastrar as credenciais PIX no ambiente protegido.
-15. Codex testar autenticação do provedor em sandbox, sem movimentar dinheiro.
+15. Codex testar a integração com a conta real do proprietário, começando pelo modo de homologação do provedor quando disponível e sem cobrança a clientes.
 16. Escolher provedor oficial de WhatsApp Business/API.
-17. Proprietário conectar e verificar o número comercial.
+17. Proprietário conectar e verificar sua conta e seu número real de WhatsApp.
 18. Codex criar apenas os nomes das variáveis WhatsApp em `.env.example`.
 19. Proprietário cadastrar token, número e identificadores no ambiente protegido.
-20. Codex testar uma mensagem de template em ambiente permitido.
+20. Codex testar uma mensagem de template usando a conta real, enviando inicialmente somente ao número do proprietário ou a destinatário de teste autorizado.
 21. Definir domínio, e-mail transacional, hospedagem e banco.
 22. Proprietário conectar as contas que exigirem verificação.
 
-Marco B: PIX e WhatsApp conectados em teste, sem operação real.
+Marco B: contas reais de PIX e WhatsApp do proprietário conectadas e integração técnica validada.
 
 ### Bloco C - Fundação técnica
 
@@ -397,8 +397,8 @@ O início operacional será:
 1. Salvar este roteiro.
 2. Preservar o protótipo.
 3. Criar os documentos técnicos do repositório.
-4. Escolher e conectar PIX sandbox.
-5. Escolher e conectar WhatsApp Business/API.
+4. Escolher o provedor e conectar a conta PIX real do proprietário, usando homologação técnica quando disponível.
+5. Escolher o provedor e conectar a conta e o número reais de WhatsApp do proprietário.
 6. Criar a fundação Next.js/Supabase.
 7. Implementar autenticação e isolamento.
 8. Entregar o primeiro fluxo real de clientes.
