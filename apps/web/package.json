@@ -1,0 +1,22 @@
+{
+  "name": "@control-premium/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@control-premium/config": "0.1.0",
+    "@control-premium/domain": "0.1.0",
+    "@control-premium/integrations": "0.1.0",
+    "@control-premium/ui": "0.1.0",
+    "@supabase/supabase-js": "2.110.8",
+    "next": "16.2.11",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
+  }
+}
