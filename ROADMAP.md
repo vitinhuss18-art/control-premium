@@ -20,7 +20,7 @@ Transformar o protótipo visual aprovado em um SaaS web e aplicativos Android/iP
 
 | Bloco | Entrega | Estado |
 |---|---|---|
-| A | Proteção do projeto, inventário e escopo congelado | Em revisão |
+| A | Proteção do projeto, inventário e escopo congelado | Aprovado; ruleset final pendente |
 | B | Contas reais de PIX e WhatsApp conectadas e validadas | Pendente |
 | C | Fundação Next.js/TypeScript/Supabase | Pendente |
 | D | Banco multiempresa e RLS | Pendente |
