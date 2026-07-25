@@ -775,21 +775,28 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+(function () {
+  if (window.__controlPremiumSupabaseInit) {
+    return;
+  }
+  window.__controlPremiumSupabaseInit = true;
+
   // Configuração do Supabase - usar variáveis de ambiente
-  const SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://ymayqjphgwvxekgxxolt.supabase.co';
-  const SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sb_publishable_l3fdH2Nd_U2CyRvS1GFhkw_g3ceVXxh';
-  
-  let supabase = null;
+  var SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://ymayqjphgwvxekgxxolt.supabase.co';
+  var SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sb_publishable_l3fdH2Nd_U2CyRvS1GFhkw_g3ceVXxh';
+
+  var supabaseClient = null;
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = supabaseClient;
     console.log('✓ Supabase inicializado');
-  } catch(e) {
+  } catch (e) {
     console.warn('⚠ Supabase não configurado - usando localStorage apenas', e.message);
   }
-  
+
   // Verificar autenticação ao carregar
-  if (supabase) {
-    supabase.auth.getSession().then(({ data }) => {
+  if (supabaseClient) {
+    supabaseClient.auth.getSession().then(({ data }) => {
       if (data.session) {
         console.log('✓ Usuário autenticado:', data.session.user.email);
       } else {
@@ -801,10 +808,10 @@
   // [SUPABASE] Envia um novo cliente para a tabela public.clients.
   // Requer que o usuário logado tenha um tenant_id em public.profiles (RLS aplica isso).
   // Se o Supabase não estiver configurado, retorna sem fazer nada (fluxo local continua intacto).
-  async function sincronizarClienteComSupabase({ nome, cpfMask, whats, chavePix, endereco, regiao }) {
-    if (!supabase) return;
-    const cpfLimpo = (cpfMask || '').replace(/\D/g, '');
-    const { error } = await supabase.from('clients').insert({
+  window.sincronizarClienteComSupabase = async function ({ nome, cpfMask, whats, chavePix, endereco, regiao }) {
+    if (!window.supabaseClient) return;
+    var cpfLimpo = (cpfMask || '').replace(/\D/g, '');
+    const { error } = await window.supabaseClient.from('clients').insert({
       full_name: nome,
       cpf: cpfLimpo,
       phone: whats,
@@ -812,7 +819,8 @@
     });
     if (error) throw error;
     console.log('✓ Cliente sincronizado com Supabase:', nome);
-  }
+  };
+})();
 </script>
 </head>
 <body>
