@@ -5,7 +5,11 @@ begin;
 -- qualquer pessoa com a chave anônima (pública, por natureza) podia inserir
 -- uma "proposta" direto na tabela, sem token nenhum. Agora a função também
 -- devolve o id do link, para ser referenciado e checado na própria política.
-create or replace function public.validate_signup_link_token(p_token text)
+-- O tipo de retorno mudou (de uuid para uma tabela), então o Postgres exige
+-- apagar a função antiga antes de recriar.
+drop function if exists public.validate_signup_link_token(text);
+
+create function public.validate_signup_link_token(p_token text)
 returns table(tenant_id uuid, link_id uuid)
 language plpgsql
 security definer
