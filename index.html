@@ -2011,8 +2011,27 @@ function filtrarClientes(valor) {
   });
 }
 
-function enviarLinkWhatsApp() {
-  const link = 'https://controle.app/cadastro'; // placeholder — trocar pela URL real de cadastro quando publicar
+async function enviarLinkWhatsApp() {
+  if (!window.supabaseClient) {
+    alert('⚠ Supabase não está configurado. O link de cadastro ainda não pode ser gerado.');
+    return;
+  }
+
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) {
+    alert('⚠ Você precisa estar autenticado com uma conta de administrador (login real, não o login por CPF) para gerar um link de cadastro válido. Essa etapa ainda está sendo construída.');
+    return;
+  }
+
+  const { data: token, error } = await window.supabaseClient.rpc('create_client_signup_link');
+  if (error) {
+    alert('⚠ Não foi possível gerar o link: ' + error.message);
+    return;
+  }
+
+  // Link relativo: funciona tanto localmente (mesma pasta que o cadastro.html)
+  // quanto depois de publicado, desde que os dois arquivos fiquem juntos.
+  const link = `${window.location.href.replace(/[^/]*$/, '')}cadastro.html?token=${token}`;
   const texto = encodeURIComponent(`Olá! Segue o link para se cadastrar: ${link}`);
   window.open(`https://wa.me/?text=${texto}`, '_blank');
   registrarAuditoria('Link de cadastro aberto no WhatsApp', 'Assinante compartilhou o link de cadastro');
