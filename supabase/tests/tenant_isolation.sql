@@ -124,16 +124,17 @@ select throws_ok(
   'Empresa A não insere cliente na Empresa B'
 );
 
+create temporary table pgtap_update_check as
+with changed as (
+  update public.clients
+  set full_name = 'Alteração bloqueada'
+  where id = 'b2000000-0000-4000-8000-000000000002'
+  returning 1
+)
+select count(*)::integer as changed_count from changed;
+
 select is(
-  (
-    with changed as (
-      update public.clients
-      set full_name = 'Alteração bloqueada'
-      where id = 'b2000000-0000-4000-8000-000000000002'
-      returning 1
-    )
-    select count(*)::integer from changed
-  ),
+  (select changed_count from pgtap_update_check),
   0,
   'Empresa A não altera cliente da Empresa B'
 );
