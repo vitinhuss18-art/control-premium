@@ -76,14 +76,15 @@ export async function POST(req: Request) {
     auth: { persistSession: false },
   });
 
-  const { data: tenantId, error: tokenError } = await anonClient.rpc(
-    "validate_signup_link_token",
-    { p_token: token },
-  );
+  const { data: validation, error: tokenError } = await anonClient
+    .rpc("validate_signup_link_token", { p_token: token })
+    .single<{ tenant_id: string; link_id: string }>();
 
-  if (tokenError || !tenantId) {
+  if (tokenError || !validation?.tenant_id || !validation?.link_id) {
     return badRequest("Link de cadastro inválido ou expirado.");
   }
+  const tenantId = validation.tenant_id;
+  const linkId = validation.link_id;
 
   const proposalId = crypto.randomUUID();
   const { error: proposalError } = await anonClient
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
     .insert({
       id: proposalId,
       tenant_id: tenantId,
-      signup_link_id: null,
+      signup_link_id: linkId,
       full_name: fullName,
       cpf,
       instagram: instagram || null,

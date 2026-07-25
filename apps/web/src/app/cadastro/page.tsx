@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import "./cadastro.css";
 
 type PhotoKey = "foto" | "docFrente" | "docVerso" | "fachada";
@@ -59,13 +59,11 @@ export default function CadastroPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const tokenRef = useRef<string | null>(null);
-
-  useMemo(() => {
-    if (typeof window !== "undefined") {
-      tokenRef.current = new URLSearchParams(window.location.search).get("token");
-    }
-  }, []);
+  const [token] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("token"),
+  );
 
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -112,7 +110,7 @@ export default function CadastroPage() {
     setSubmitting(true);
     try {
       const fd = new FormData();
-      fd.append("token", tokenRef.current ?? "");
+      fd.append("token", token ?? "");
       fd.append("fullName", form.fullName.trim());
       fd.append("cpf", form.cpf.replace(/\D/g, ""));
       fd.append("instagram", form.instagram.trim());
@@ -155,7 +153,7 @@ export default function CadastroPage() {
     );
   }
 
-  if (!tokenRef.current) {
+  if (!token) {
     return (
       <main className="cp-page">
         <div className="cp-card">
