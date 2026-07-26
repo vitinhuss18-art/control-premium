@@ -971,6 +971,7 @@
       <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
     </div>
     <div style="color:var(--grey2);font-size:11px;margin-bottom:14px;">📌 Análise de crédito com IA em tempo real</div>
+    <div id="propostasExternas"></div>
     <div id="listaRenovacoes"></div>
   </div>
 
@@ -1659,6 +1660,7 @@ function show(id) {
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
   if (id === 'dashboard') atualizarDashboard();
   if (id === 'contratos') renderizarSelectClienteContrato();
+  if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') preencherFormAssinante();
 }
 
@@ -2156,6 +2158,192 @@ function scrollToForm() {
 // ============================================================
 // RENOVAÇÕES
 // ============================================================
+// ============================================================
+// PROPOSTAS EXTERNAS (vindas do link público de cadastro)
+// ============================================================
+async function carregarPropostasExternas() {
+  const alvo = document.getElementById('propostasExternas');
+  if (!alvo || !window.supabaseClient) { if (alvo) alvo.innerHTML = ''; return; }
+
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) {
+    alvo.innerHTML = renderLoginInlineSupabase();
+    return;
+  }
+
+  alvo.innerHTML = '<div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Carregando propostas recebidas pelo link...</div>';
+
+  const { data: propostas, error } = await window.supabaseClient
+    .from('client_proposals')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    alvo.innerHTML = `<div style="color:var(--error);font-size:12px;margin-bottom:14px;">⚠ Não foi possível carregar as propostas: ${error.message}</div>`;
+    return;
+  }
+
+  if (!propostas || propostas.length === 0) {
+    alvo.innerHTML = '';
+    return;
+  }
+
+  alvo.innerHTML = `<div style="color:var(--primary);font-size:12px;font-weight:700;margin-bottom:10px;">📥 Propostas recebidas pelo link (${propostas.length})</div>` +
+    propostas.map(p => `
+      <div class="card" id="propostaExterna_${p.id}">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div class="avatar">${(p.full_name || '?').slice(0, 2).toUpperCase()}</div>
+          <div class="info"><div class="n">${p.full_name}</div><div class="s">CPF: ${p.cpf} · WhatsApp: ${p.whatsapp}</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--grey2);margin-bottom:10px;">Valor solicitado: <b style="color:var(--primary);">${fmtMoney((p.loan_amount_cents || 0) / 100)}</b></div>
+        <div class="form-group"><label>Frequência</label>
+          <select id="propFreq_${p.id}">
+            <option value="daily">Diário</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;"><label>Parcelas</label><input id="propParcelas_${p.id}" type="number" min="1" value="4"></div>
+          <div class="form-group" style="flex:1;"><label>Juros por parcela (%)</label><input id="propJuros_${p.id}" type="number" min="0" step="0.1" value="20"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-secondary" style="flex:1;background:var(--error);color:#fff;border:none;" onclick="decidirPropostaExterna('${p.id}','rejected')">❌ Recusar</button>
+          <button class="btn-primary" style="flex:1;" onclick="decidirPropostaExterna('${p.id}','approved')">✅ Aprovar</button>
+        </div>
+        <div id="propostaResultado_${p.id}"></div>
+      </div>
+    `).join('');
+}
+
+async function decidirPropostaExterna(proposalId, decisao) {
+  const params = { p_proposal_id: proposalId, p_decision: decisao };
+  if (decisao === 'approved') {
+    params.p_frequency = document.getElementById(`propFreq_${proposalId}`).value;
+    params.p_installment_count = parseInt(document.getElementById(`propParcelas_${proposalId}`).value, 10);
+    const jurosPercent = parseFloat(document.getElementById(`propJuros_${proposalId}`).value);
+    params.p_periodic_interest_bps = Math.round(jurosPercent * 100);
+  }
+
+  const { data, error } = await window.supabaseClient.rpc('decide_client_proposal', params);
+  const resultado = document.getElementById(`propostaResultado_${proposalId}`);
+
+  if (error) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;margin-top:8px;">⚠ ${error.message}</div>`;
+    return;
+  }
+
+  const registro = Array.isArray(data) ? data[0] : data;
+  const numeroDigits = (registro.whatsapp || '').replace(/\D/g, '');
+  let mensagem;
+  if (decisao === 'approved') {
+    const linkApp = window.location.origin;
+    mensagem = `🎉 ${registro.full_name}, sua proposta foi aprovada!\n\nSeja bem-vindo(a) ao Control$ Premium. Acesse pelo link abaixo e entre com seu CPF:\n${linkApp}`;
+  } else {
+    const dataRetorno = new Date();
+    dataRetorno.setDate(dataRetorno.getDate() + 7);
+    const dataFormatada = dataRetorno.toLocaleDateString('pt-BR');
+    mensagem = `Oi ${registro.full_name}, por enquanto sua proposta não foi aprovada.\n\nVocê pode enviar uma nova proposta a partir de ${dataFormatada}.`;
+  }
+
+  const linkWhats = `https://wa.me/55${numeroDigits}?text=${encodeURIComponent(mensagem)}`;
+  resultado.innerHTML = `
+    <div style="background:rgba(255,215,0,0.08);border-radius:10px;padding:10px;margin-top:10px;font-size:11px;">
+      ${decisao === 'approved' ? '✅ Cliente criado com sucesso.' : '❌ Proposta recusada.'} Envie o resultado pelo WhatsApp:
+      <a href="${linkWhats}" target="_blank" class="btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;">📤 Abrir WhatsApp</a>
+    </div>`;
+
+  registrarAuditoria(
+    decisao === 'approved' ? 'Proposta externa aprovada' : 'Proposta externa recusada',
+    registro.full_name,
+    { publico: 'admin', assinanteId: assinanteAtualId() }
+  );
+
+  setTimeout(() => {
+    const card = document.getElementById(`propostaExterna_${proposalId}`);
+    if (card) card.style.opacity = '0.5';
+  }, 100);
+}
+
+function renderLoginInlineSupabase() {
+  return `
+    <div class="card" id="loginInlineSupabase">
+      <div style="color:var(--primary);font-size:13px;font-weight:700;margin-bottom:4px;">Conecte sua conta para ver propostas recebidas</div>
+      <div style="color:var(--grey2);font-size:11px;margin-bottom:12px;">As propostas enviadas pelo link público ficam aqui, mas só aparecem depois de você entrar com sua conta de administrador.</div>
+      <div class="form-group"><label>E-mail</label><input id="supaLoginEmail" type="email"></div>
+      <div class="form-group"><label>Senha</label><input id="supaLoginSenha" type="password"></div>
+      <div id="supaLoginErro" style="display:none;color:var(--error);font-size:11px;margin-bottom:8px;"></div>
+      <button class="btn-primary" style="width:100%;" onclick="entrarComSupabase()">Entrar</button>
+      <div style="text-align:center;margin:10px 0;color:var(--grey2);font-size:11px;">ou</div>
+      <button class="btn-secondary" style="width:100%;" onclick="mostrarCriarEmpresaSupabase()">Criar minha empresa</button>
+      <div id="criarEmpresaSupabaseForm" style="display:none;margin-top:12px;">
+        <div class="form-group"><label>Razão social</label><input id="supaEmpresaLegal" type="text"></div>
+        <div class="form-group"><label>Nome fantasia</label><input id="supaEmpresaFantasia" type="text"></div>
+        <div class="form-group"><label>Seu nome completo</label><input id="supaAdminNome" type="text"></div>
+        <button class="btn-primary" style="width:100%;" onclick="criarEmpresaComSupabase()">Criar empresa e entrar</button>
+      </div>
+    </div>`;
+}
+
+function mostrarCriarEmpresaSupabase() {
+  document.getElementById('criarEmpresaSupabaseForm').style.display = 'block';
+}
+
+async function entrarComSupabase() {
+  const email = document.getElementById('supaLoginEmail').value.trim();
+  const senha = document.getElementById('supaLoginSenha').value;
+  const erro = document.getElementById('supaLoginErro');
+  erro.style.display = 'none';
+
+  const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
+  if (error) {
+    erro.textContent = 'E-mail ou senha inválidos.';
+    erro.style.display = 'block';
+    return;
+  }
+  carregarPropostasExternas();
+}
+
+async function criarEmpresaComSupabase() {
+  const email = document.getElementById('supaLoginEmail').value.trim();
+  const senha = document.getElementById('supaLoginSenha').value;
+  const legal = document.getElementById('supaEmpresaLegal').value.trim();
+  const fantasia = document.getElementById('supaEmpresaFantasia').value.trim();
+  const nomeAdmin = document.getElementById('supaAdminNome').value.trim();
+  const erro = document.getElementById('supaLoginErro');
+  erro.style.display = 'none';
+
+  if (!email || !senha || !legal || !fantasia || !nomeAdmin) {
+    erro.textContent = 'Preencha todos os campos (e-mail, senha, razão social, nome fantasia e seu nome).';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const signUp = await window.supabaseClient.auth.signUp({ email, password: senha });
+    if (signUp.error) throw signUp.error;
+    if (!signUp.data.session) {
+      erro.style.color = 'var(--primary)';
+      erro.textContent = 'Conta criada! Confirme seu e-mail e depois clique em "Entrar" aqui mesmo.';
+      erro.style.display = 'block';
+      return;
+    }
+    const rpc = await window.supabaseClient.rpc('bootstrap_tenant', {
+      tenant_legal_name: legal,
+      tenant_display_name: fantasia,
+      administrator_full_name: nomeAdmin
+    });
+    if (rpc.error) throw rpc.error;
+    carregarPropostasExternas();
+  } catch (e) {
+    erro.style.color = 'var(--error)';
+    erro.textContent = e.message || 'Não foi possível criar a empresa.';
+    erro.style.display = 'block';
+  }
+}
+
 function renderizarRenovacoes() {
   const lista = document.getElementById('listaRenovacoes');
   if (!lista) return;
