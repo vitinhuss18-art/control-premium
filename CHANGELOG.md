@@ -77,7 +77,26 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 
 - Identidade visual e comportamento do protótipo `ControlPremium_PROTOTIPO_OFICIAL_V1.html`.
 
-### Entrega técnica dos Blocos I a S
+### Sessão 25-26/07/2026 (Claude)
+
+- Correção de segurança real na política de inserção de `client_proposals` (permitia
+  inserção sem token válido) e na política de storage de documentos (permitia upload
+  irrestrito) — ambas introduzidas por uma sessão anterior do Codex.
+- Correção de 2 erros de lint reais (`react-hooks/refs`, `react-hooks/set-state-in-effect`)
+  na página `/cadastro`.
+- Módulo de domínio "Venda Parcelada" (`installmentSale.ts`), reaproveitando
+  `simulateProposal()` integralmente — juros fixo, sem duplicar lógica.
+- Módulo de domínio "Custos operacionais" (`operationalCost.ts`), configurável por empresa
+  (percentual ou valor fixo), distribuído nas parcelas.
+- Migrações 11 a 13 (`installment_sale`, `operational_costs`, `proposal_decisions`).
+- Seção "Propostas recebidas pelo link" dentro da tela existente do `index.html`
+  (não foi criada tela/rota separada, a pedido do proprietário), com login inline via
+  Supabase Auth, listagem de `client_proposals` pendentes e decisão (aprovar cria o
+  cliente real; recusar apenas marca o status) com geração de mensagem de WhatsApp
+  (manual, via `wa.me`, na ausência de provedor oficial conectado).
+- Documentação: `docs/ROADMAP_IMPLEMENTACAO_FINAL.md`, `docs/FORMULAS_FINANCEIRAS.md`,
+  `HANDOFF.md` (ponto de retomada completo para qualquer IA ou desenvolvedor).
+- 106 testes automatizados no total (35 novos desde o início da sessão), todos passando.
 
 - Simulação determinística de propostas, checklist documental e pontuação explicável com decisão humana obrigatória.
 - Núcleo de empréstimos com parcelas, pagamentos parciais, quitação, estorno, recibos e razão financeiro imutável.
