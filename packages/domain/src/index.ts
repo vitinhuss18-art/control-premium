@@ -3,6 +3,7 @@ export * from "./contract";
 export * from "./installmentSale";
 export * from "./loan";
 export * from "./money";
+export * from "./operationalCost";
 export * from "./permissions";
 export * from "./privacy";
 export * from "./proposal";
