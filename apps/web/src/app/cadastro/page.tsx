@@ -23,9 +23,13 @@ function maskCpf(value: string): string {
 function maskPhone(value: string): string {
   const d = value.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 10) {
-    return d.replace(/(\d{2})(\d{4})(\d)/, "($1) $2-$3").replace(/(\d{2})(\d)/, "($1) $2");
+    return d
+      .replace(/(\d{2})(\d{4})(\d)/, "($1) $2-$3")
+      .replace(/(\d{2})(\d)/, "($1) $2");
   }
-  return d.replace(/(\d{2})(\d{5})(\d)/, "($1) $2-$3").replace(/(\d{2})(\d)/, "($1) $2");
+  return d
+    .replace(/(\d{2})(\d{5})(\d)/, "($1) $2-$3")
+    .replace(/(\d{2})(\d)/, "($1) $2");
 }
 
 function maskCurrency(value: string): string {
@@ -128,7 +132,9 @@ export default function CadastroPage() {
       const res = await fetch("/api/cadastro", { method: "POST", body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? "Não foi possível enviar sua proposta.");
+        throw new Error(
+          body.message ?? "Não foi possível enviar sua proposta.",
+        );
       }
       setDone(true);
     } catch (err) {
@@ -286,7 +292,9 @@ export default function CadastroPage() {
               type="text"
               inputMode="numeric"
               value={form.loanAmount}
-              onChange={(e) => update("loanAmount", maskCurrency(e.target.value))}
+              onChange={(e) =>
+                update("loanAmount", maskCurrency(e.target.value))
+              }
               placeholder="R$ 0,00"
             />
           </div>
@@ -321,7 +329,11 @@ export default function CadastroPage() {
 
           {error && <div className="cp-error">{error}</div>}
 
-          <button type="submit" className="cp-btn-primary" disabled={submitting}>
+          <button
+            type="submit"
+            className="cp-btn-primary"
+            disabled={submitting}
+          >
             {submitting ? "Enviando..." : "Enviar proposta"}
           </button>
         </form>

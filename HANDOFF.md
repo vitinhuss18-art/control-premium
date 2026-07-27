@@ -34,6 +34,7 @@ necessidade.
 ## 3. Dominio e aplicacao (packages/) -- a parte mais solida do projeto
 
 packages/domain/src/: logica financeira pura, sem I/O, 100% testada.
+
 - money.ts -- valores sempre em centavos (inteiro), nunca float.
 - proposal.ts -- simulateProposal(): juros simples fixo (NAO recalcula sobre saldo
   devedor), distribuicao justa de centavos entre parcelas, datas com dias uteis/feriados,
@@ -48,6 +49,7 @@ packages/domain/src/: logica financeira pura, sem I/O, 100% testada.
   subscription.ts, tenant.ts.
 
 packages/application/src/: orquestracao (usa o domain + persistencia).
+
 - proposals.ts -- cria proposta com "simulation" congelada uma unica vez (nunca
   recalculada depois -- e a garantia estrutural de que proposta = contrato = parcelas).
 - loans.ts -- cria emprestimo a partir de proposta aprovada, usando so os valores ja
@@ -230,6 +232,7 @@ sem necessidade.
 ## 11. Como aplicar uma migracao nova no Supabase (processo manual, sem CLI)
 
 Victor nao tem a Supabase CLI instalada e prefere copiar/colar. O processo e:
+
 1. Mostrar o SQL completo da migracao num bloco de codigo.
 2. Pedir para colar no SQL Editor do Supabase
    (https://supabase.com/dashboard/project/ymayqjphgwvxekgxxolt/sql/new) e clicar em "Run".
