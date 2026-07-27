@@ -776,51 +776,6 @@ a {
 
 /* ---------- Painel do dono (super_admin) ---------- */
 
-.owner-access-toggle {
-  display: block;
-  margin: 18px auto 0;
-  background: none;
-  border: none;
-  color: #74736d;
-  font-size: 11px;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.owner-access-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.owner-access-form input {
-  flex: 1;
-  min-width: 160px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f7f5ed;
-}
-
-.owner-access-form button {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid rgba(231, 189, 86, 0.3);
-  background: rgba(231, 189, 86, 0.08);
-  color: #e7bd56;
-  cursor: pointer;
-}
-
-.owner-access-error {
-  width: 100%;
-  text-align: center;
-  color: #e5786b;
-  font-size: 12px;
-}
-
 .owner-shell {
   min-height: 100vh;
   padding: clamp(20px, 4vw, 48px);

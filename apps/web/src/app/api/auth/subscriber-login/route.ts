@@ -52,9 +52,9 @@ export async function POST(request: Request) {
 
   const { data: profiles } = await service
     .from("profiles")
-    .select("id")
+    .select("id, role")
     .eq("cpf", cpf)
-    .eq("role", "admin")
+    .in("role", ["admin", "super_admin"])
     .eq("active", true)
     .limit(2);
   if (profiles?.length !== 1 || !profiles[0]?.id) {
@@ -83,5 +83,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     accessToken: data.session.access_token,
     refreshToken: data.session.refresh_token,
+    role: profiles[0].role,
   });
 }

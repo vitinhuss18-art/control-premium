@@ -59,10 +59,6 @@ export function SubscriberAccess() {
     kind: "error" | "success";
     text: string;
   } | null>(null);
-  const [showOwnerAccess, setShowOwnerAccess] = useState(false);
-  const [ownerCode, setOwnerCode] = useState("");
-  const [ownerBusy, setOwnerBusy] = useState(false);
-  const [ownerMessage, setOwnerMessage] = useState<string | null>(null);
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -110,6 +106,7 @@ export function SubscriberAccess() {
         message?: string;
         accessToken?: string;
         refreshToken?: string;
+        role?: string;
       };
       if (
         !response.ok ||
@@ -124,7 +121,7 @@ export function SubscriberAccess() {
         refresh_token: body.refreshToken,
       });
       if (error) throw error;
-      window.location.assign("/painel");
+      window.location.assign(body.role === "super_admin" ? "/owner" : "/painel");
     } catch (error) {
       setMessage({
         kind: "error",
@@ -133,45 +130,6 @@ export function SubscriberAccess() {
       });
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function ownerLogin(event: React.FormEvent) {
-    event.preventDefault();
-    setOwnerMessage(null);
-    if (!ownerCode.trim()) return;
-    setOwnerBusy(true);
-    try {
-      const response = await fetch("/api/auth/owner-access", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: ownerCode.trim() }),
-      });
-      const body = (await response.json()) as {
-        message?: string;
-        accessToken?: string;
-        refreshToken?: string;
-      };
-      if (
-        !response.ok ||
-        !body.accessToken ||
-        !body.refreshToken ||
-        !supabase
-      ) {
-        throw new Error(body.message ?? "Código inválido.");
-      }
-      const { error } = await supabase.auth.setSession({
-        access_token: body.accessToken,
-        refresh_token: body.refreshToken,
-      });
-      if (error) throw error;
-      window.location.assign("/owner");
-    } catch (error) {
-      setOwnerMessage(
-        error instanceof Error ? error.message : "Código inválido.",
-      );
-    } finally {
-      setOwnerBusy(false);
     }
   }
 
@@ -350,33 +308,6 @@ export function SubscriberAccess() {
               <a className="client-link" href="/prototype.html">
                 Sou cliente de uma empresa
               </a>
-              <button
-                type="button"
-                className="owner-access-toggle"
-                onClick={() => {
-                  setShowOwnerAccess((visible) => !visible);
-                  setOwnerMessage(null);
-                }}
-              >
-                Acesso administrativo
-              </button>
-              {showOwnerAccess && (
-                <form className="owner-access-form" onSubmit={ownerLogin}>
-                  <input
-                    value={ownerCode}
-                    onChange={(event) => setOwnerCode(event.target.value)}
-                    type="password"
-                    autoComplete="off"
-                    placeholder="Código de acesso"
-                  />
-                  <button disabled={ownerBusy}>
-                    {ownerBusy ? "..." : "Entrar"}
-                  </button>
-                  {ownerMessage && (
-                    <span className="owner-access-error">{ownerMessage}</span>
-                  )}
-                </form>
-              )}
             </div>
           )}
 
