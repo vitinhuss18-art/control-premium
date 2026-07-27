@@ -772,6 +772,15 @@
   }
 
   .screen { position: relative; z-index: 1; }
+/* Cliente real (vindo do Supabase, aprovado pelo link) ainda não tem
+   empréstimo/parcelas gerados — esconde os cartões de demonstração que
+   dependem de dados fictícios, mostrando só o card de status real. */
+.cliente-modo-real #debitoBox,
+.cliente-modo-real #clientePixBox,
+.cliente-modo-real #clienteQuitarCard,
+.cliente-modo-real #centralAcordos,
+.cliente-modo-real #clienteBotoesPagamento,
+.cliente-modo-real #clienteHistorico { display: none !important; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1121,6 +1130,8 @@
       <img id="clienteFoto" style="display:none;width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--divider);">
     </div>
     <div class="sub" style="color:var(--grey2);font-size:11px;margin-bottom:12px;">Central com IA</div>
+
+    <div class="cliente-conteudo-real" style="display:none;"></div>
 
     <div class="card card-glow" id="clienteSemDivida" style="display:none;"></div>
 
@@ -1664,11 +1675,17 @@ function show(id) {
   if (id === 'painel') preencherFormAssinante();
 }
 
-function entrar() {
+async function entrar() {
   const cpf = document.getElementById('loginInput').value.trim().replace(/\D/g, '');
   const user = usuariosDB.find(u => u.cpf === cpf);
   const aviso = document.getElementById('loginAviso');
-  if (!user) { if (aviso) aviso.style.display = 'block'; return; }
+
+  if (!user) {
+    const clienteReal = await tentarLoginClienteReal(cpf);
+    if (clienteReal) return;
+    if (aviso) aviso.style.display = 'block';
+    return;
+  }
   if (aviso) aviso.style.display = 'none';
   perfilAtual = user.perfil;
   usuarioAtual = user;
@@ -1694,6 +1711,45 @@ function entrar() {
     clienteAtualizarUI();
     capturarLocalizacaoCliente(user.clienteId, user.nome);
   }
+}
+
+// Cliente aprovado pelo fluxo do link (existe de verdade no Supabase, não
+// nos dados de demonstração). Login só por CPF, sem senha — mesma
+// experiência que o cliente demo já tinha, só que consultando o banco real.
+async function tentarLoginClienteReal(cpf) {
+  const aviso = document.getElementById('loginAviso');
+  if (!window.supabaseClient || cpf.length !== 11) return false;
+
+  const { data, error } = await window.supabaseClient.rpc('client_login_by_cpf', { p_cpf: cpf });
+  if (error || !data || data.length === 0) return false;
+
+  const cliente = data[0];
+  perfilAtual = 'cliente';
+  usuarioAtual = { cpf, nome: cliente.full_name, perfil: 'cliente', clienteId: cliente.client_id, real: true };
+  montarMenu();
+  if (aviso) aviso.style.display = 'none';
+
+  show('cliente');
+  registrarAuditoria('🔑 Login cliente (real)', `CPF: ${formatarCpf(cpf)}`, { publico: 'cliente', clienteId: cliente.client_id });
+  document.querySelector('#cliente .greeting').innerHTML = `Bem-vindo, <span class="admin-name-display">${cliente.full_name}</span>`;
+
+  const painel = document.querySelector('#cliente');
+  const statusLabel = {
+    incomplete: 'Cadastro em andamento',
+    under_review: 'Sua proposta está em análise',
+    approved: 'Proposta aprovada — aguarde a geração do seu contrato',
+    blocked: 'Cadastro bloqueado. Fale com o assinante.',
+    archived: 'Cadastro arquivado.'
+  }[cliente.status] || 'Aguardando atualização';
+
+  const areaConteudo = painel && painel.querySelector('.cliente-conteudo-real');
+  if (painel) painel.classList.add('cliente-modo-real');
+  if (areaConteudo) {
+    areaConteudo.style.display = 'block';
+    areaConteudo.innerHTML = `<div class="card"><div style="color:var(--primary);font-size:13px;font-weight:700;margin-bottom:6px;">Status da sua conta</div><div style="font-size:12px;color:var(--grey2);">${statusLabel}</div></div>`;
+  }
+
+  return true;
 }
 
 function ultimoLoginRapido() {
