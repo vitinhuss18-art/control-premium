@@ -89,6 +89,9 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 - Módulo de domínio "Custos operacionais" (`operationalCost.ts`), configurável por empresa
   (percentual ou valor fixo), distribuído nas parcelas.
 - Migrações 11 a 13 (`installment_sale`, `operational_costs`, `proposal_decisions`).
+- Login de cliente real protegido por CPF + quatro últimos dígitos do WhatsApp, com
+  resposta mínima, recusa de combinações multiempresa ambíguas e remoção da versão que
+  aceitava somente CPF.
 - Seção "Propostas recebidas pelo link" dentro da tela existente do `index.html`
   (não foi criada tela/rota separada, a pedido do proprietário), com login inline via
   Supabase Auth, listagem de `client_proposals` pendentes e decisão (aprovar cria o

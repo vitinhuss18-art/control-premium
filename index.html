@@ -855,9 +855,11 @@
     <div class="login-title">Control$</div>
     <div class="login-sub">Gestão Premium de Crédito com IA</div>
     <div class="field">🪪 <input id="loginInput" placeholder="Digite seu CPF" inputmode="numeric" oninput="mascararCpf(this)"></div>
+    <div class="field">📱 <input id="loginPhoneLast4" placeholder="4 últimos dígitos do WhatsApp" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"></div>
     <button class="btn-primary" onclick="entrar()">🚀 Entrar no Sistema</button>
     <button class="btn-secondary" id="btnLoginRapido" style="display:none;margin-top:10px;" onclick="loginRapido()">🔓 Continuar como <span id="loginRapidoNome"></span></button>
-    <div class="hint" id="loginAviso" style="display:none;color:var(--error);">CPF não encontrado</div>
+    <div class="hint" id="loginAviso" style="display:none;color:var(--error);">Dados de acesso inválidos</div>
+    <div class="hint">Clientes reais: informe também os 4 últimos dígitos do WhatsApp.</div>
     <div class="hint">Teste: 000.000.000-00 (admin) · 111.111.111-11 (cobrador) · 123.456.789-00 (cliente)</div>
     <div class="hint">Outro assinante (base isolada): 999.999.999-99</div>
   </div>
@@ -1677,11 +1679,12 @@ function show(id) {
 
 async function entrar() {
   const cpf = document.getElementById('loginInput').value.trim().replace(/\D/g, '');
+  const phoneLast4 = document.getElementById('loginPhoneLast4').value.trim().replace(/\D/g, '');
   const user = usuariosDB.find(u => u.cpf === cpf);
   const aviso = document.getElementById('loginAviso');
 
   if (!user) {
-    const clienteReal = await tentarLoginClienteReal(cpf);
+    const clienteReal = await tentarLoginClienteReal(cpf, phoneLast4);
     if (clienteReal) return;
     if (aviso) aviso.style.display = 'block';
     return;
@@ -1714,13 +1717,16 @@ async function entrar() {
 }
 
 // Cliente aprovado pelo fluxo do link (existe de verdade no Supabase, não
-// nos dados de demonstração). Login só por CPF, sem senha — mesma
-// experiência que o cliente demo já tinha, só que consultando o banco real.
-async function tentarLoginClienteReal(cpf) {
+// nos dados de demonstração). O acesso exige CPF e os quatro últimos dígitos
+// do WhatsApp cadastrado, evitando autenticação baseada apenas em um dado público.
+async function tentarLoginClienteReal(cpf, phoneLast4) {
   const aviso = document.getElementById('loginAviso');
-  if (!window.supabaseClient || cpf.length !== 11) return false;
+  if (!window.supabaseClient || cpf.length !== 11 || phoneLast4.length !== 4) return false;
 
-  const { data, error } = await window.supabaseClient.rpc('client_login_by_cpf', { p_cpf: cpf });
+  const { data, error } = await window.supabaseClient.rpc('client_login_by_cpf', {
+    p_cpf: cpf,
+    p_phone_last4: phoneLast4
+  });
   if (error || !data || data.length === 0) return false;
 
   const cliente = data[0];
@@ -1784,6 +1790,7 @@ function voltarLogin() {
   perfilAtual = null;
   usuarioAtual = null;
   document.getElementById('loginInput').value = '';
+  document.getElementById('loginPhoneLast4').value = '';
   show('login');
   atualizarBotaoLoginRapido();
 }
@@ -2293,10 +2300,11 @@ async function decidirPropostaExterna(proposalId, decisao) {
 
   const registro = Array.isArray(data) ? data[0] : data;
   const numeroDigits = (registro.whatsapp || '').replace(/\D/g, '');
+  const phoneLast4 = numeroDigits.slice(-4);
   let mensagem;
   if (decisao === 'approved') {
     const linkApp = window.location.origin;
-    mensagem = `🎉 ${registro.full_name}, sua proposta foi aprovada!\n\nSeja bem-vindo(a) ao Control$ Premium. Acesse pelo link abaixo e entre com seu CPF:\n${linkApp}`;
+    mensagem = `🎉 ${registro.full_name}, sua proposta foi aprovada!\n\nSeja bem-vindo(a) ao Control$ Premium. Acesse pelo link abaixo e entre com seu CPF e os 4 últimos dígitos do seu WhatsApp (${phoneLast4}):\n${linkApp}`;
   } else {
     const dataRetorno = new Date();
     dataRetorno.setDate(dataRetorno.getDate() + 7);
