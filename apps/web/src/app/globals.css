@@ -344,8 +344,68 @@ a {
   background: rgba(255, 255, 255, 0.015);
 }
 
+.access-shell.register-mode {
+  grid-template-columns: 1fr;
+}
+
+.register-mode .access-hero {
+  display: none;
+}
+
+.register-mode .access-panel {
+  padding-top: clamp(36px, 5vw, 72px);
+  padding-bottom: clamp(52px, 7vw, 96px);
+  background:
+    radial-gradient(
+      circle at 50% 8%,
+      rgba(231, 189, 86, 0.11),
+      transparent 26%
+    ),
+    #070807;
+}
+
 .access-card {
   width: min(100%, 570px);
+}
+
+.registration-flow {
+  width: min(100%, 650px);
+  display: grid;
+  gap: 28px;
+}
+
+.register-heading {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.register-heading .secure-pill {
+  margin-bottom: 18px;
+}
+
+.register-heading h2 {
+  margin: 0;
+  font-size: clamp(38px, 5vw, 62px);
+  letter-spacing: -0.06em;
+}
+
+.register-heading p {
+  max-width: 500px;
+  margin: 14px 0 0;
+  color: #aaa99f;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.register-card {
+  width: 100%;
+}
+
+.register-card h3 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  letter-spacing: -0.035em;
 }
 
 .framed-card {
@@ -457,6 +517,18 @@ a {
   box-shadow: 0 0 0 3px rgba(231, 189, 86, 0.1);
 }
 
+.access-card input.invalid {
+  border-color: #e76767;
+  box-shadow: 0 0 0 3px rgba(231, 103, 103, 0.08);
+}
+
+.field-error {
+  color: #ff8989;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 .password-field {
   position: relative;
   display: block;
@@ -479,6 +551,26 @@ a {
   font-weight: 800;
 }
 
+.password-rules {
+  display: grid;
+  gap: 8px;
+  margin-top: -5px;
+  padding: 14px 16px;
+  border: 1px solid #30312d;
+  border-radius: 12px;
+  color: #8f8e86;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.password-rules span {
+  transition: color 160ms ease;
+}
+
+.password-rules span.met {
+  color: #8fd0a8;
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -493,6 +585,15 @@ a {
   border: 1px solid rgba(231, 189, 86, 0.22);
   border-radius: 12px;
   background: rgba(231, 189, 86, 0.06);
+}
+
+.register-card .plan-summary {
+  margin-top: 5px;
+  margin-bottom: 0;
+}
+
+.register-card .plan-options {
+  margin-bottom: 4px;
 }
 
 .plan-summary span,
@@ -544,6 +645,12 @@ a {
 .form-message.success {
   background: rgba(68, 192, 125, 0.12);
   color: #93e5b8;
+}
+
+.terms-note {
+  display: block;
+  color: #8f8e86;
+  text-align: center;
 }
 
 .security-badges {
@@ -630,6 +737,18 @@ a {
   .framed-card {
     padding: 24px 18px;
     border-radius: 20px;
+  }
+
+  .register-mode .access-panel {
+    padding-top: 34px;
+  }
+
+  .register-heading h2 {
+    font-size: 42px;
+  }
+
+  .register-heading p {
+    font-size: 14px;
   }
 
   .security-badges {

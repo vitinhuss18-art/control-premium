@@ -24,6 +24,12 @@ test("abre login e cadastro", async ({ page }) => {
   await expect(
     page.getByText(/7 dias de experiência • até 15 clientes/i),
   ).toBeVisible();
+  await expect(page.getByLabel("Confirme seu e-mail")).toBeVisible();
+  await expect(page.getByLabel("Telefone")).toBeVisible();
+  await expect(page.getByLabel("Confirmar senha")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Criar conta e continuar" }),
+  ).toBeVisible();
 });
 
 test("mantém o painel operacional disponível", async ({ page }) => {
