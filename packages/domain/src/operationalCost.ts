@@ -51,7 +51,10 @@ function calculateOperationalCostCents(
       );
     }
     return Number(
-      roundedDivision(BigInt(baseCents) * BigInt(config.percentageBps), 10_000n),
+      roundedDivision(
+        BigInt(baseCents) * BigInt(config.percentageBps),
+        10_000n,
+      ),
     );
   }
 

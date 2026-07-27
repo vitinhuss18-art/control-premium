@@ -34,6 +34,7 @@ necessidade.
 ## 3. Dominio e aplicacao (packages/) -- a parte mais solida do projeto
 
 packages/domain/src/: logica financeira pura, sem I/O, 100% testada.
+
 - money.ts -- valores sempre em centavos (inteiro), nunca float.
 - proposal.ts -- simulateProposal(): juros simples fixo (NAO recalcula sobre saldo
   devedor), distribuicao justa de centavos entre parcelas, datas com dias uteis/feriados,
@@ -48,6 +49,7 @@ packages/domain/src/: logica financeira pura, sem I/O, 100% testada.
   subscription.ts, tenant.ts.
 
 packages/application/src/: orquestracao (usa o domain + persistencia).
+
 - proposals.ts -- cria proposta com "simulation" congelada uma unica vez (nunca
   recalculada depois -- e a garantia estrutural de que proposta = contrato = parcelas).
 - loans.ts -- cria emprestimo a partir de proposta aprovada, usando so os valores ja
@@ -101,11 +103,14 @@ onde possivel):
     Victor no banco real. Adiciona client_id/frequency/installment_count/
     periodic_interest_bps em client_proposals, whatsapp_business_number em tenants,
     e as funcoes decide_client_proposal() e connect_tenant_whatsapp().
+14. 202607260002_client_login_by_cpf.sql -- login de cliente real por CPF + quatro
+    ultimos digitos do WhatsApp. Remove a assinatura anterior que aceitava somente CPF
+    e recusa credenciais ambiguas entre tenants.
 
-ACAO PENDENTE IMEDIATA: confirmar com Victor se a migracao 13 ja foi colada no SQL
-Editor do Supabase e rodada com sucesso de verdade (ver o aviso acima sobre confirmacoes
-nao confiaveis). Sem ela, a tela de Propostas no index.html vai dar erro ao tentar decidir
-uma proposta.
+ACAO PENDENTE IMEDIATA: confirmar com Victor se as migracoes 13 e 14 ja foram coladas no
+SQL Editor do Supabase e rodadas com sucesso de verdade (ver o aviso acima sobre
+confirmacoes nao confiaveis). Sem a 13, a tela de Propostas vai falhar ao decidir uma
+proposta; sem a 14, o cliente real nao consegue entrar.
 
 Chave publica (segura para expor no client-side, ja usada em index.html e em
 apps/web/src/app/cadastro):
@@ -134,19 +139,14 @@ neste repositorio nem em conversa.
    pendentes do tenant.
 5. Admin define frequencia/parcelas/juros e aprova (ou recusa) ->
    decidirPropostaExterna() chama a RPC decide_client_proposal():
-   - Se aprovado: cria a linha real em clients (e o que falta pra login por CPF
-     funcionar), marca a proposta como aprovada.
+   - Se aprovado: cria a linha real em clients e marca a proposta como aprovada.
    - Se recusado: so marca o status, nao apaga nada de verdade.
-6. Gera mensagem de WhatsApp (aprovado: boas-vindas + link do app + "entre com seu CPF";
-   recusado: "tente novamente em 7 dias") com botao que abre wa.me/... -- envio ainda e
-   manual (o admin clica e manda), porque nao existe provedor oficial de WhatsApp
-   conectado (ver secao 7).
-
-Gap conhecido nesse fluxo: o login por CPF do index.html (function entrar()) hoje
-so olha o array local usuariosDB (dados falsos/demo), NAO consulta o Supabase. Um
-cliente aprovado pelo fluxo acima ainda nao consegue de fato logar usando CPF contra o
-banco real -- falta conectar essa funcao. Esta mapeado no roadmap (secao 9) como proximo
-passo.
+6. Gera mensagem de WhatsApp (aprovado: boas-vindas + link do app; recusado: "tente
+   novamente em 7 dias") com botao que abre wa.me/... -- envio ainda e manual (o admin
+   clica e manda), porque nao existe provedor oficial de WhatsApp conectado (ver secao 7).
+7. O cliente aprovado entra informando CPF e os quatro ultimos digitos do WhatsApp.
+   A RPC client_login_by_cpf() consulta o Supabase, devolve somente nome/status e recusa
+   combinacoes ambiguas entre tenants.
 
 ## 6. Codex -- outro agente de IA trabalhando no mesmo repositorio
 
@@ -181,7 +181,7 @@ completa. Resumo do que bloqueia o que:
 
 ## 8. Bugs conhecidos / dividas tecnicas
 
-- Login por CPF do index.html nao esta conectado ao Supabase (secao 5, gap conhecido).
+- O login real ainda precisa de rate limit no gateway antes de exposicao em producao.
 - register_client_via_link() (migracao 7) e codigo morto -- substituido pelo fluxo de
   client_proposals. Nao atrapalha, mas pode ser removido num cleanup futuro.
 - Nenhum teste automatizado cobre o index.html (e HTML/JS solto, sem framework de teste).
@@ -195,17 +195,15 @@ completa. Resumo do que bloqueia o que:
 
 ## 9. Roadmap -- proximos passos, em ordem de dependencia
 
-1. Confirmar que a migracao 13 foi aplicada de verdade (ver secao 4).
-2. Conectar o login por CPF do index.html ao Supabase -- hoje e o maior gap pratico:
-   sem isso, o cliente aprovado nao consegue entrar no app de verdade.
-3. Testar o fluxo completo ponta a ponta: link -> proposta -> aprovacao -> cliente criado
+1. Confirmar que as migracoes 13 e 14 foram aplicadas de verdade (ver secao 4).
+2. Testar o fluxo completo ponta a ponta: link -> proposta -> aprovacao -> cliente criado
    -> login do cliente.
-4. Conectar connect_tenant_whatsapp() a uma tela real (hoje so existe a funcao no banco,
+3. Conectar connect_tenant_whatsapp() a uma tela real (hoje so existe a funcao no banco,
    sem UI ainda) -- e o "a conexao do assinante e no momento que ele cadastra o WhatsApp
    de trabalho" que Victor pediu.
-5. Retomar os itens do docs/ROADMAP_IMPLEMENTACAO_FINAL.md (Dashboard, Agenda, Cobrador,
+4. Retomar os itens do docs/ROADMAP_IMPLEMENTACAO_FINAL.md (Dashboard, Agenda, Cobrador,
    tipo de operacao escolhivel antes do contrato).
-6. Quando Victor decidir provedor de PIX/WhatsApp: plugar credenciais reais nos servicos
+5. Quando Victor decidir provedor de PIX/WhatsApp: plugar credenciais reais nos servicos
    ja prontos em packages/application.
 
 ## 10. Como validar qualquer mudanca antes de comitar (checklist minimo)
@@ -234,6 +232,7 @@ sem necessidade.
 ## 11. Como aplicar uma migracao nova no Supabase (processo manual, sem CLI)
 
 Victor nao tem a Supabase CLI instalada e prefere copiar/colar. O processo e:
+
 1. Mostrar o SQL completo da migracao num bloco de codigo.
 2. Pedir para colar no SQL Editor do Supabase
    (https://supabase.com/dashboard/project/ymayqjphgwvxekgxxolt/sql/new) e clicar em "Run".
