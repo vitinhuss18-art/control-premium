@@ -110,6 +110,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // Link de uso único: uma vez que a proposta foi registrada, o link não pode
+  // mais ser reaproveitado (evita que o cliente encaminhe o mesmo link e outra
+  // pessoa envie uma segunda proposta usando o convite dele).
+  await anonClient.rpc("consume_signup_link", { p_link_id: linkId });
+
   if (SERVICE_ROLE_KEY) {
     const serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
