@@ -2096,7 +2096,7 @@ async function enviarLinkWhatsApp() {
 
   // Link relativo: funciona tanto localmente (mesma pasta que o cadastro.html)
   // quanto depois de publicado, desde que os dois arquivos fiquem juntos.
-  const link = `${window.location.href.replace(/[^/]*$/, '')}cadastro.html?token=${token}`;
+  const link = `${window.location.origin}/cadastro?token=${token}`;
   const texto = encodeURIComponent(`Olá! Segue o link para se cadastrar: ${link}`);
   window.open(`https://wa.me/?text=${texto}`, '_blank');
   registrarAuditoria('Link de cadastro aberto no WhatsApp', 'Assinante compartilhou o link de cadastro');
