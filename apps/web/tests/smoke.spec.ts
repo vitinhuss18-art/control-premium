@@ -7,20 +7,17 @@ test("mostra a entrada do assinante", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /Controle sua operação/i }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Cadastrar minha empresa/i }),
+    page.getByRole("heading", { name: "Bem-vindo de volta" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Entrar e continuar" }),
   ).toBeVisible();
 });
 
 test("abre login e cadastro", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Entre no seu painel" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: /Voltar/i }).click();
-  await page.getByRole("button", { name: /Cadastrar minha empresa/i }).click();
+  await page.getByRole("button", { name: "Cadastre-se" }).click();
   await expect(
     page.getByRole("heading", { name: "Crie sua conta" }),
   ).toBeVisible();
