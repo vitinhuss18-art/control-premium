@@ -1,10 +1,5 @@
-import { PrototypeFrame } from "@control-premium/ui";
+import { SubscriberAccess } from "./subscriber-access";
 
 export default function HomePage() {
-  return (
-    <PrototypeFrame
-      src="/prototype.html"
-      title="Control Premium — Protótipo Oficial V1"
-    />
-  );
+  return <SubscriberAccess />;
 }
