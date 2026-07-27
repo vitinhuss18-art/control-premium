@@ -11,6 +11,12 @@ const maskCpf = (value: string) =>
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
     .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4");
+const maskPhone = (value: string) =>
+  digits(value, 11)
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+const validEmail = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 function validCpf(value: string) {
   const cpf = digits(value, 11);
@@ -33,14 +39,20 @@ export function SubscriberAccess() {
   const [screen, setScreen] = useState<Screen>("login");
   const [showSplash, setShowSplash] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registerAttempted, setRegisterAttempted] = useState(false);
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     companyName: "",
     email: "",
+    confirmEmail: "",
+    phone: "",
     cpf: "",
     password: "",
+    confirmPassword: "",
   });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
@@ -63,6 +75,15 @@ export function SubscriberAccess() {
     );
     return () => window.clearTimeout(timer);
   }, []);
+
+  function goToScreen(nextScreen: Screen) {
+    setMessage(null);
+    setRegisterAttempted(false);
+    setScreen(nextScreen);
+    window.requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: "auto" }),
+    );
+  }
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
@@ -114,16 +135,25 @@ export function SubscriberAccess() {
   async function register(event: React.FormEvent) {
     event.preventDefault();
     setMessage(null);
+    setRegisterAttempted(true);
+    const normalizedEmail = form.email.trim().toLowerCase();
+    const normalizedConfirmEmail = form.confirmEmail.trim().toLowerCase();
+    const phoneDigits = digits(form.phone, 11);
     if (
       !form.fullName.trim() ||
       !form.companyName.trim() ||
-      !form.email.trim() ||
+      !validEmail(normalizedEmail) ||
+      normalizedEmail !== normalizedConfirmEmail ||
+      phoneDigits.length !== 11 ||
       !validCpf(form.cpf) ||
-      form.password.length < 8
+      form.password.length < 8 ||
+      !/[A-Za-z]/.test(form.password) ||
+      !/\d/.test(form.password) ||
+      form.password !== form.confirmPassword
     ) {
       setMessage({
         kind: "error",
-        text: "Preencha os dados, use um CPF válido e uma senha com 8 caracteres.",
+        text: "Revise os campos destacados para concluir seu cadastro.",
       });
       return;
     }
@@ -137,7 +167,7 @@ export function SubscriberAccess() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.signUp({
-        email: form.email.trim().toLowerCase(),
+        email: normalizedEmail,
         password: form.password,
         options: {
           emailRedirectTo: `${window.location.origin}/?email-confirmado=1`,
@@ -146,6 +176,7 @@ export function SubscriberAccess() {
             cpf: digits(form.cpf, 11),
             full_name: form.fullName.trim(),
             company_name: form.companyName.trim(),
+            phone: phoneDigits,
           },
         },
       });
@@ -185,7 +216,9 @@ export function SubscriberAccess() {
           </div>
         </div>
       )}
-      <main className="access-shell">
+      <main
+        className={`access-shell ${screen === "register" ? "register-mode" : ""}`}
+      >
         <section className="access-hero">
           <a className="access-brand" href="/" aria-label="Control Premium">
             <span>Control$</span> Premium
@@ -267,12 +300,7 @@ export function SubscriberAccess() {
               </div>
               <div className="signup-prompt">
                 Ainda não tem conta?{" "}
-                <button
-                  onClick={() => {
-                    setMessage(null);
-                    setScreen("register");
-                  }}
-                >
+                <button onClick={() => goToScreen("register")}>
                   Cadastre-se
                 </button>
               </div>
@@ -283,44 +311,38 @@ export function SubscriberAccess() {
           )}
 
           {screen === "register" && (
-            <div className="access-card framed-card register-card">
-              <button
-                className="back-button"
-                onClick={() => {
-                  setMessage(null);
-                  setScreen("login");
-                }}
-              >
-                ← Voltar para entrar
-              </button>
-              <span className="eyebrow">Plano gratuito</span>
-              <h2>Crie sua conta</h2>
-              <div className="plan-summary">
-                <strong>Grátis para começar</strong>
-                <span>
-                  7 dias de experiência • até 15 clientes • operação manual
-                </span>
-              </div>
-              <div className="plan-options" aria-label="Planos disponíveis">
-                <div className="plan-option selected">
-                  <span>Plano atual</span>
-                  <strong>Free</strong>
-                  <small>15 clientes, lançamentos e cobranças manuais.</small>
+            <div className="registration-flow">
+              <div className="register-heading">
+                <div className="secure-pill">
+                  <span aria-hidden="true">◇</span> Novo acesso seguro
                 </div>
-                <div className="plan-option">
-                  <span>Upgrade</span>
-                  <strong>Premium recorrente</strong>
-                  <small>
-                    Mais clientes e automações. Cartão pelo checkout seguro do
-                    provedor.
-                  </small>
-                </div>
+                <span className="eyebrow">Control$ Premium</span>
+                <h2>Crie sua conta</h2>
+                <p>
+                  Cadastre-se para centralizar clientes, contratos e recebíveis.
+                </p>
               </div>
-              <form onSubmit={register}>
-                <div className="field-grid">
+
+              <div className="access-card framed-card register-card">
+                <button
+                  className="back-button"
+                  onClick={() => goToScreen("login")}
+                >
+                  ← Voltar para entrar
+                </button>
+                <h3>Dados de acesso</h3>
+                <p className="muted">
+                  Preencha as informações abaixo para abrir sua conta.
+                </p>
+                <form onSubmit={register} noValidate>
                   <label>
-                    Seu nome
+                    Nome completo
                     <input
+                      className={
+                        registerAttempted && !form.fullName.trim()
+                          ? "invalid"
+                          : ""
+                      }
                       value={form.fullName}
                       onChange={(event) =>
                         setForm({ ...form, fullName: event.target.value })
@@ -328,10 +350,20 @@ export function SubscriberAccess() {
                       autoComplete="name"
                       placeholder="Nome completo"
                     />
+                    {registerAttempted && !form.fullName.trim() && (
+                      <span className="field-error">
+                        Informe seu nome completo.
+                      </span>
+                    )}
                   </label>
                   <label>
-                    Empresa
+                    Nome da empresa
                     <input
+                      className={
+                        registerAttempted && !form.companyName.trim()
+                          ? "invalid"
+                          : ""
+                      }
                       value={form.companyName}
                       onChange={(event) =>
                         setForm({ ...form, companyName: event.target.value })
@@ -339,24 +371,98 @@ export function SubscriberAccess() {
                       autoComplete="organization"
                       placeholder="Nome da empresa"
                     />
+                    {registerAttempted && !form.companyName.trim() && (
+                      <span className="field-error">
+                        Informe o nome da empresa.
+                      </span>
+                    )}
                   </label>
-                </div>
-                <label>
-                  E-mail de confirmação
-                  <input
-                    value={form.email}
-                    onChange={(event) =>
-                      setForm({ ...form, email: event.target.value })
-                    }
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@empresa.com"
-                  />
-                </label>
-                <div className="field-grid">
+                  <label>
+                    E-mail
+                    <input
+                      className={
+                        registerAttempted && !validEmail(form.email)
+                          ? "invalid"
+                          : ""
+                      }
+                      value={form.email}
+                      onChange={(event) =>
+                        setForm({ ...form, email: event.target.value })
+                      }
+                      type="email"
+                      autoComplete="email"
+                      placeholder="voce@empresa.com"
+                    />
+                    {registerAttempted && !validEmail(form.email) && (
+                      <span className="field-error">
+                        Informe um e-mail válido.
+                      </span>
+                    )}
+                  </label>
+                  <label>
+                    Confirme seu e-mail
+                    <input
+                      className={
+                        registerAttempted &&
+                        (!form.confirmEmail.trim() ||
+                          form.email.trim().toLowerCase() !==
+                            form.confirmEmail.trim().toLowerCase())
+                          ? "invalid"
+                          : ""
+                      }
+                      value={form.confirmEmail}
+                      onChange={(event) =>
+                        setForm({ ...form, confirmEmail: event.target.value })
+                      }
+                      type="email"
+                      autoComplete="email"
+                      placeholder="Digite novamente seu e-mail"
+                    />
+                    {registerAttempted &&
+                      (!form.confirmEmail.trim() ||
+                        form.email.trim().toLowerCase() !==
+                          form.confirmEmail.trim().toLowerCase()) && (
+                        <span className="field-error">
+                          Os e-mails precisam ser iguais.
+                        </span>
+                      )}
+                  </label>
+                  <label>
+                    Telefone
+                    <input
+                      className={
+                        registerAttempted &&
+                        digits(form.phone, 11).length !== 11
+                          ? "invalid"
+                          : ""
+                      }
+                      value={form.phone}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          phone: maskPhone(event.target.value),
+                        })
+                      }
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="(00) 00000-0000"
+                    />
+                    {registerAttempted &&
+                      digits(form.phone, 11).length !== 11 && (
+                        <span className="field-error">
+                          O telefone deve ter 11 dígitos, incluindo o DDD.
+                        </span>
+                      )}
+                  </label>
                   <label>
                     CPF do assinante
                     <input
+                      className={
+                        registerAttempted && !validCpf(form.cpf)
+                          ? "invalid"
+                          : ""
+                      }
                       value={form.cpf}
                       onChange={(event) =>
                         setForm({ ...form, cpf: maskCpf(event.target.value) })
@@ -365,33 +471,161 @@ export function SubscriberAccess() {
                       autoComplete="username"
                       placeholder="000.000.000-00"
                     />
+                    {registerAttempted && !validCpf(form.cpf) && (
+                      <span className="field-error">
+                        Informe um CPF válido.
+                      </span>
+                    )}
                   </label>
                   <label>
                     Senha
-                    <input
-                      value={form.password}
-                      onChange={(event) =>
-                        setForm({ ...form, password: event.target.value })
-                      }
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="Mínimo 8 caracteres"
-                    />
+                    <span className="password-field">
+                      <input
+                        className={
+                          registerAttempted &&
+                          (form.password.length < 8 ||
+                            !/[A-Za-z]/.test(form.password) ||
+                            !/\d/.test(form.password))
+                            ? "invalid"
+                            : ""
+                        }
+                        value={form.password}
+                        onChange={(event) =>
+                          setForm({ ...form, password: event.target.value })
+                        }
+                        type={showRegisterPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Crie uma senha"
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        onClick={() =>
+                          setShowRegisterPassword((visible) => !visible)
+                        }
+                        aria-label={
+                          showRegisterPassword
+                            ? "Ocultar senha do cadastro"
+                            : "Mostrar senha do cadastro"
+                        }
+                      >
+                        {showRegisterPassword ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </span>
                   </label>
-                </div>
-                {message && (
-                  <div className={`form-message ${message.kind}`}>
-                    {message.text}
+                  <div
+                    className="password-rules"
+                    aria-label="Requisitos da senha"
+                  >
+                    <span className={form.password.length >= 8 ? "met" : ""}>
+                      {form.password.length >= 8 ? "✓" : "○"} Mínimo de 8
+                      caracteres
+                    </span>
+                    <span
+                      className={
+                        /[A-Za-z]/.test(form.password) &&
+                        /\d/.test(form.password)
+                          ? "met"
+                          : ""
+                      }
+                    >
+                      {/[A-Za-z]/.test(form.password) &&
+                      /\d/.test(form.password)
+                        ? "✓"
+                        : "○"}{" "}
+                      Use letras e números
+                    </span>
                   </div>
-                )}
-                <button className="primary-button" disabled={busy}>
-                  {busy ? "Criando..." : "Criar conta grátis"}
-                </button>
-                <small>
-                  Ao continuar, você aceita os termos do serviço. Nenhuma
-                  cobrança será feita agora.
-                </small>
-              </form>
+                  <label>
+                    Confirmar senha
+                    <span className="password-field">
+                      <input
+                        className={
+                          registerAttempted &&
+                          (!form.confirmPassword ||
+                            form.password !== form.confirmPassword)
+                            ? "invalid"
+                            : ""
+                        }
+                        value={form.confirmPassword}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            confirmPassword: event.target.value,
+                          })
+                        }
+                        type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Digite novamente sua senha"
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        onClick={() =>
+                          setShowConfirmPassword((visible) => !visible)
+                        }
+                        aria-label={
+                          showConfirmPassword
+                            ? "Ocultar confirmação de senha"
+                            : "Mostrar confirmação de senha"
+                        }
+                      >
+                        {showConfirmPassword ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </span>
+                    {registerAttempted &&
+                      (!form.confirmPassword ||
+                        form.password !== form.confirmPassword) && (
+                        <span className="field-error">
+                          As senhas precisam ser iguais.
+                        </span>
+                      )}
+                  </label>
+
+                  <div className="plan-summary">
+                    <strong>Plano Free para começar</strong>
+                    <span>
+                      7 dias de experiência • até 15 clientes • sem cartão agora
+                    </span>
+                  </div>
+                  <div className="plan-options" aria-label="Planos disponíveis">
+                    <div className="plan-option selected">
+                      <span>Plano inicial</span>
+                      <strong>Free</strong>
+                      <small>15 clientes e operação manual.</small>
+                    </div>
+                    <div className="plan-option">
+                      <span>Upgrade</span>
+                      <strong>Premium recorrente</strong>
+                      <small>Mais clientes, automações e cartão seguro.</small>
+                    </div>
+                  </div>
+
+                  {message && (
+                    <div className={`form-message ${message.kind}`}>
+                      {message.text}
+                    </div>
+                  )}
+                  <small className="terms-note">
+                    Ao finalizar, você confirma que os dados informados são
+                    verdadeiros. Nenhuma cobrança será feita agora.
+                  </small>
+                  <button className="primary-button" disabled={busy}>
+                    {busy ? "Criando..." : "Criar conta e continuar"}
+                  </button>
+                </form>
+                <div
+                  className="security-badges"
+                  aria-label="Benefícios do cadastro"
+                >
+                  <span>◇ Dados protegidos</span>
+                  <span>⚡ Ativação rápida</span>
+                </div>
+                <div className="signup-prompt">
+                  Já tem conta?{" "}
+                  <button onClick={() => goToScreen("login")}>Entrar</button>
+                </div>
+              </div>
             </div>
           )}
         </section>
