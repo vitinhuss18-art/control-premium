@@ -1046,20 +1046,7 @@
     <div class="card">
       <div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Isso cria o empréstimo de verdade no banco — diferente da calculadora acima, que é só demonstração.</div>
       <div class="form-group"><label>Cliente</label><select id="erCliente"><option value="">Carregando clientes...</option></select></div>
-      <div class="form-group"><label>Tipo de operação</label>
-        <select id="erTipo" onchange="atualizarCamposVendaParcelada()">
-          <option value="loan">Empréstimo</option>
-          <option value="installment_sale">Venda parcelada</option>
-        </select>
-      </div>
-      <div id="erCamposVenda" style="display:none;">
-        <div class="form-group"><label>Produto</label><input id="erProduto" placeholder="Ex: Celular Samsung A15"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Valor de venda</label><input id="erValorVenda" placeholder="R$ 0,00"></div>
-          <div class="form-group"><label>Entrada</label><input id="erEntrada" placeholder="R$ 0,00" value="0"></div>
-        </div>
-      </div>
-      <div class="form-group" id="erCampoPrincipal"><label>Valor do empréstimo</label><input id="erPrincipal" placeholder="R$ 0,00"></div>
+      <div class="form-group"><label>Valor do empréstimo</label><input id="erPrincipal" placeholder="R$ 0,00"></div>
       <div class="form-row">
         <div class="form-group"><label>Parcelas</label><input id="erParcelas" type="number" min="1" value="4"></div>
         <div class="form-group"><label>Juros por parcela (%)</label><input id="erJuros" type="number" min="0" step="0.1" value="20"></div>
@@ -1077,6 +1064,42 @@
       </div>
       <button class="btn-glow" onclick="criarEmprestimoReal()">✅ Criar empréstimo real</button>
       <div id="erResultado" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- VENDA PARCELADA -->
+  <div class="screen nav-space" id="vendaParcelada">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">🛍 Venda Parcelada</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+    <div class="card">
+      <div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Venda um produto parcelado pro cliente — separado do empréstimo comum.</div>
+      <div class="form-group"><label>Cliente</label><select id="vpCliente"><option value="">Carregando clientes...</option></select></div>
+      <div class="form-group"><label>Produto</label><input id="vpProduto" placeholder="Ex: Celular Samsung A15"></div>
+      <div class="form-group"><label>Descrição (opcional)</label><input id="vpDescricao" placeholder="Ex: 128GB, azul"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor de venda</label><input id="vpValorVenda" placeholder="R$ 0,00"></div>
+        <div class="form-group"><label>Entrada</label><input id="vpEntrada" placeholder="R$ 0,00" value="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Parcelas</label><input id="vpParcelas" type="number" min="1" value="4"></div>
+        <div class="form-group"><label>Juros por parcela (%)</label><input id="vpJuros" type="number" min="0" step="0.1" value="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Frequência</label>
+          <select id="vpFrequencia">
+            <option value="daily">Diária</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <div class="form-group"><label>1ª parcela em</label><input id="vpPrimeiraData" type="date"></div>
+      </div>
+      <button class="btn-glow" onclick="criarVendaParcelada()">✅ Criar venda parcelada</button>
+      <div id="vpResultado" style="margin-top:10px;"></div>
     </div>
   </div>
 
@@ -1669,6 +1692,7 @@ const menuPorPerfil = {
     { id: 'dashboard', ic: '📊', label: 'Dashboard' },
     { id: 'clientes', ic: '👥', label: 'Clientes' },
     { id: 'cadastrar', ic: '➕', label: 'Cadastrar' },
+    { id: 'vendaParcelada', ic: '🛍', label: 'Venda Parcelada' },
     { id: 'renovacoes', ic: '💸', label: 'Propostas' },
     { id: 'contratos', ic: '📄', label: 'Contratos' },
     { id: 'agenda', ic: '📅', label: 'Agenda' },
@@ -1718,7 +1742,8 @@ function show(id) {
   const nav = document.getElementById('bottomNav');
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
   if (id === 'dashboard') atualizarDashboard();
-  if (id === 'contratos') { renderizarSelectClienteContrato(); carregarClientesReais(); }
+  if (id === 'contratos') { renderizarSelectClienteContrato(); carregarClientesEm('erCliente'); }
+  if (id === 'vendaParcelada') carregarClientesEm('vpCliente');
   if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') { preencherFormAssinante(); carregarWhatsappEmpresa(); }
 }
@@ -1958,8 +1983,8 @@ function preencherFormAssinante() {
 // ============================================================
 // EMPRÉSTIMO REAL (Supabase — /api/admin/loans)
 // ============================================================
-async function carregarClientesReais() {
-  const select = document.getElementById('erCliente');
+async function carregarClientesEm(selectId) {
+  const select = document.getElementById(selectId);
   if (!select || !window.supabaseClient) return;
 
   const { data: sessao } = await window.supabaseClient.auth.getSession();
@@ -1981,12 +2006,6 @@ async function carregarClientesReais() {
   select.innerHTML = clientes.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
 }
 
-function atualizarCamposVendaParcelada() {
-  const venda = document.getElementById('erTipo').value === 'installment_sale';
-  document.getElementById('erCamposVenda').style.display = venda ? 'block' : 'none';
-  document.getElementById('erCampoPrincipal').style.display = venda ? 'none' : 'block';
-}
-
 async function criarEmprestimoReal() {
   const resultado = document.getElementById('erResultado');
   resultado.innerHTML = '';
@@ -2001,12 +2020,12 @@ async function criarEmprestimoReal() {
     return;
   }
 
-  const tipo = document.getElementById('erTipo').value;
   const clientId = document.getElementById('erCliente').value;
   const frequency = document.getElementById('erFrequencia').value;
   const installmentCount = parseInt(document.getElementById('erParcelas').value, 10);
   const periodicInterestBps = Math.round(parseNumeroBR(document.getElementById('erJuros').value) * 100);
   const firstDueDate = document.getElementById('erPrimeiraData').value;
+  const principalCents = Math.round(parseNumeroBR(document.getElementById('erPrincipal').value) * 100);
 
   if (!clientId || !firstDueDate) {
     resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Selecione o cliente e a data da primeira parcela.</div>';
@@ -2014,16 +2033,8 @@ async function criarEmprestimoReal() {
   }
 
   const payload = {
-    clientId, operationType: tipo, frequency, installmentCount, periodicInterestBps, firstDueDate,
+    clientId, operationType: 'loan', frequency, installmentCount, periodicInterestBps, firstDueDate, principalCents,
   };
-
-  if (tipo === 'installment_sale') {
-    payload.productName = document.getElementById('erProduto').value.trim();
-    payload.salePriceCents = Math.round(parseNumeroBR(document.getElementById('erValorVenda').value) * 100);
-    payload.downPaymentCents = Math.round(parseNumeroBR(document.getElementById('erEntrada').value) * 100);
-  } else {
-    payload.principalCents = Math.round(parseNumeroBR(document.getElementById('erPrincipal').value) * 100);
-  }
 
   const resp = await fetch('/api/admin/loans', {
     method: 'POST',
@@ -2042,7 +2053,64 @@ async function criarEmprestimoReal() {
   t.textContent = '✅ Empréstimo real criado!';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
-  registrarAuditoria('Empréstimo real criado', `${tipo} - ${fmtMoney((json.totalCents || 0) / 100)}`);
+  registrarAuditoria('Empréstimo real criado', fmtMoney((json.totalCents || 0) / 100));
+}
+
+// ============================================================
+// VENDA PARCELADA (Supabase — /api/admin/loans, operation_type=installment_sale)
+// ============================================================
+async function criarVendaParcelada() {
+  const resultado = document.getElementById('vpResultado');
+  resultado.innerHTML = '';
+
+  if (!window.supabaseClient) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Entre pela aba Propostas primeiro.</div>';
+    return;
+  }
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Sessão expirada, entre novamente.</div>';
+    return;
+  }
+
+  const clientId = document.getElementById('vpCliente').value;
+  const productName = document.getElementById('vpProduto').value.trim();
+  const productDescription = document.getElementById('vpDescricao').value.trim();
+  const salePriceCents = Math.round(parseNumeroBR(document.getElementById('vpValorVenda').value) * 100);
+  const downPaymentCents = Math.round(parseNumeroBR(document.getElementById('vpEntrada').value) * 100);
+  const frequency = document.getElementById('vpFrequencia').value;
+  const installmentCount = parseInt(document.getElementById('vpParcelas').value, 10);
+  const periodicInterestBps = Math.round(parseNumeroBR(document.getElementById('vpJuros').value) * 100);
+  const firstDueDate = document.getElementById('vpPrimeiraData').value;
+
+  if (!clientId || !productName || !salePriceCents || !firstDueDate) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Preencha cliente, produto, valor de venda e a data da primeira parcela.</div>';
+    return;
+  }
+
+  const payload = {
+    clientId, operationType: 'installment_sale', frequency, installmentCount, periodicInterestBps, firstDueDate,
+    productName, productDescription: productDescription || undefined, salePriceCents, downPaymentCents,
+  };
+
+  const resp = await fetch('/api/admin/loans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessao.session.access_token}` },
+    body: JSON.stringify(payload),
+  });
+  const json = await resp.json().catch(() => ({}));
+
+  if (!resp.ok) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ ${json.message || 'Erro ao criar venda parcelada.'}</div>`;
+    return;
+  }
+
+  resultado.innerHTML = `<div style="color:var(--primary);font-size:11px;">✅ Venda parcelada criada! Total: ${fmtMoney((json.totalCents || 0) / 100)} em ${json.installmentCount}x.</div>`;
+  const t = document.getElementById('toast');
+  t.textContent = '✅ Venda parcelada criada!';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Venda parcelada criada', `${productName} - ${fmtMoney((json.totalCents || 0) / 100)}`);
 }
 
 // ============================================================
