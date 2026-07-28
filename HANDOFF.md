@@ -225,9 +225,13 @@ completa. Resumo do que bloqueia o que:
    sessao do cliente via cookie httpOnly assinado, ver commit "feat: rota /cliente de
    verdade no apps/web"). Falta validar isso contra o banco real -- so rodou local com
    npm test/typecheck/build, nunca contra dados reais.
-3. Conectar connect_tenant_whatsapp() a uma tela real (hoje so existe a funcao no banco,
-   sem UI ainda) -- e o "a conexao do assinante e no momento que ele cadastra o WhatsApp
-   de trabalho" que Victor pediu.
+3. [FEITO 28/07/2026, commit c8718c6] connect_tenant_whatsapp() agora tem UI real: card
+   "WhatsApp da Empresa" na tela de Configuracoes (index.html, id="painel"), com input +
+   botao "Conectar", chama a RPC via window.supabaseClient.rpc(), mostra o numero
+   conectado ao reabrir a tela (le tenants.whatsapp_business_number via
+   profiles.tenant_id, respeitando a RLS tenants_select_same_tenant). Validado so com
+   node --check (sem framework de teste pro index.html, ver secao 10) -- AINDA NAO
+   TESTADO contra o banco real, precisa validar clicando de verdade no site publicado.
 4. Retomar os itens do docs/ROADMAP_IMPLEMENTACAO_FINAL.md (Dashboard, Agenda, Cobrador,
    tipo de operacao escolhivel antes do contrato).
 5. Quando Victor decidir provedor de PIX/WhatsApp: plugar credenciais reais nos servicos
