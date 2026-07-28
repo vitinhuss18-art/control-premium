@@ -1041,6 +1041,43 @@
       <button class="btn-glow" style="margin-top:10px;" onclick="confirmarContrato()">✅ Confirmar e liberar empréstimo</button>
       <div id="parcelasResultado" style="margin-top:14px;"></div>
     </div>
+
+    <div class="section-title">💰 Empréstimo real (Supabase)</div>
+    <div class="card">
+      <div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Isso cria o empréstimo de verdade no banco — diferente da calculadora acima, que é só demonstração.</div>
+      <div class="form-group"><label>Cliente</label><select id="erCliente"><option value="">Carregando clientes...</option></select></div>
+      <div class="form-group"><label>Tipo de operação</label>
+        <select id="erTipo" onchange="atualizarCamposVendaParcelada()">
+          <option value="loan">Empréstimo</option>
+          <option value="installment_sale">Venda parcelada</option>
+        </select>
+      </div>
+      <div id="erCamposVenda" style="display:none;">
+        <div class="form-group"><label>Produto</label><input id="erProduto" placeholder="Ex: Celular Samsung A15"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Valor de venda</label><input id="erValorVenda" placeholder="R$ 0,00"></div>
+          <div class="form-group"><label>Entrada</label><input id="erEntrada" placeholder="R$ 0,00" value="0"></div>
+        </div>
+      </div>
+      <div class="form-group" id="erCampoPrincipal"><label>Valor do empréstimo</label><input id="erPrincipal" placeholder="R$ 0,00"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Parcelas</label><input id="erParcelas" type="number" min="1" value="4"></div>
+        <div class="form-group"><label>Juros por parcela (%)</label><input id="erJuros" type="number" min="0" step="0.1" value="20"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Frequência</label>
+          <select id="erFrequencia">
+            <option value="daily">Diária</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <div class="form-group"><label>1ª parcela em</label><input id="erPrimeiraData" type="date"></div>
+      </div>
+      <button class="btn-glow" onclick="criarEmprestimoReal()">✅ Criar empréstimo real</button>
+      <div id="erResultado" style="margin-top:10px;"></div>
+    </div>
   </div>
 
   <!-- AGENDA -->
@@ -1681,7 +1718,7 @@ function show(id) {
   const nav = document.getElementById('bottomNav');
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
   if (id === 'dashboard') atualizarDashboard();
-  if (id === 'contratos') renderizarSelectClienteContrato();
+  if (id === 'contratos') { renderizarSelectClienteContrato(); carregarClientesReais(); }
   if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') { preencherFormAssinante(); carregarWhatsappEmpresa(); }
 }
@@ -1916,6 +1953,96 @@ function preencherFormAssinante() {
   document.getElementById('toggleNegociacaoAuto')?.classList.toggle('on', auto.negociacaoAuto);
 
   atualizarNomesAdmin();
+}
+
+// ============================================================
+// EMPRÉSTIMO REAL (Supabase — /api/admin/loans)
+// ============================================================
+async function carregarClientesReais() {
+  const select = document.getElementById('erCliente');
+  if (!select || !window.supabaseClient) return;
+
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) {
+    select.innerHTML = '<option value="">Entre pela aba Propostas primeiro</option>';
+    return;
+  }
+
+  const { data: clientes, error } = await window.supabaseClient
+    .from('clients')
+    .select('id, full_name')
+    .order('full_name', { ascending: true });
+
+  if (error || !clientes || clientes.length === 0) {
+    select.innerHTML = '<option value="">Nenhum cliente encontrado</option>';
+    return;
+  }
+
+  select.innerHTML = clientes.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
+}
+
+function atualizarCamposVendaParcelada() {
+  const venda = document.getElementById('erTipo').value === 'installment_sale';
+  document.getElementById('erCamposVenda').style.display = venda ? 'block' : 'none';
+  document.getElementById('erCampoPrincipal').style.display = venda ? 'none' : 'block';
+}
+
+async function criarEmprestimoReal() {
+  const resultado = document.getElementById('erResultado');
+  resultado.innerHTML = '';
+
+  if (!window.supabaseClient) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Entre pela aba Propostas primeiro.</div>';
+    return;
+  }
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Sessão expirada, entre novamente.</div>';
+    return;
+  }
+
+  const tipo = document.getElementById('erTipo').value;
+  const clientId = document.getElementById('erCliente').value;
+  const frequency = document.getElementById('erFrequencia').value;
+  const installmentCount = parseInt(document.getElementById('erParcelas').value, 10);
+  const periodicInterestBps = Math.round(parseNumeroBR(document.getElementById('erJuros').value) * 100);
+  const firstDueDate = document.getElementById('erPrimeiraData').value;
+
+  if (!clientId || !firstDueDate) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Selecione o cliente e a data da primeira parcela.</div>';
+    return;
+  }
+
+  const payload = {
+    clientId, operationType: tipo, frequency, installmentCount, periodicInterestBps, firstDueDate,
+  };
+
+  if (tipo === 'installment_sale') {
+    payload.productName = document.getElementById('erProduto').value.trim();
+    payload.salePriceCents = Math.round(parseNumeroBR(document.getElementById('erValorVenda').value) * 100);
+    payload.downPaymentCents = Math.round(parseNumeroBR(document.getElementById('erEntrada').value) * 100);
+  } else {
+    payload.principalCents = Math.round(parseNumeroBR(document.getElementById('erPrincipal').value) * 100);
+  }
+
+  const resp = await fetch('/api/admin/loans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessao.session.access_token}` },
+    body: JSON.stringify(payload),
+  });
+  const json = await resp.json().catch(() => ({}));
+
+  if (!resp.ok) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ ${json.message || 'Erro ao criar empréstimo.'}</div>`;
+    return;
+  }
+
+  resultado.innerHTML = `<div style="color:var(--primary);font-size:11px;">✅ Empréstimo criado! Total: ${fmtMoney((json.totalCents || 0) / 100)} em ${json.installmentCount}x.</div>`;
+  const t = document.getElementById('toast');
+  t.textContent = '✅ Empréstimo real criado!';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+  registrarAuditoria('Empréstimo real criado', `${tipo} - ${fmtMoney((json.totalCents || 0) / 100)}`);
 }
 
 // ============================================================

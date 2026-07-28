@@ -99,20 +99,23 @@ onde possivel):
     politica de storage aberta demais.
 11. 202607250006_installment_sale.sql -- operation_type em credit_proposals/loans.
 12. 202607250007_operational_costs.sql -- config de custo operacional em tenants.
-13. 202607260001_proposal_decisions.sql -- AINDA NAO CONFIRMADO COMO APLICADO por
-    Victor no banco real. Adiciona client_id/frequency/installment_count/
-    periodic_interest_bps em client_proposals, whatsapp_business_number em tenants,
-    e as funcoes decide_client_proposal() e connect_tenant_whatsapp().
+13. 202607260001_proposal_decisions.sql -- CONFIRMADO 28/07/2026 (ver abaixo). Adiciona
+    client_id/frequency/installment_count/periodic_interest_bps em client_proposals,
+    whatsapp_business_number em tenants, e as funcoes decide_client_proposal() e
+    connect_tenant_whatsapp().
 14. 202607260002_client_login_by_cpf.sql -- login de cliente real por CPF + quatro
     ultimos digitos do WhatsApp. Remove a assinatura anterior que aceitava somente CPF
     e recusa credenciais ambiguas entre tenants.
+18. 202607280001_create_loan.sql -- AINDA NAO CONFIRMADO COMO APLICADO por Victor. Ver
+    "DESCOBERTA 28/07/2026" logo abaixo -- essa e a peca mais importante de todas as
+    migracoes ate agora.
 
 CONFIRMADO 28/07/2026: Victor rodou a query abaixo no SQL Editor do Supabase e as 5
 funcoes retornaram -- migracoes 13 a 17 estao aplicadas de verdade no banco real
 (decide_client_proposal, connect_tenant_whatsapp, client_login_by_cpf,
 consume_login_rate_limit, reset_login_rate_limit). Nao verificado por mim diretamente
 (sem rota de rede ate *.supabase.co), confiando na confirmacao com print/resultado da
-query, que e o padrao aceitavel descrito na secao 4.
+query, que e o padrao aceitavel descrito nesta secao.
 
 Query usada (fica registrada aqui caso precise confirmar de novo no futuro apos novas
 migracoes):
@@ -124,9 +127,48 @@ migracoes):
         'consume_login_rate_limit', 'reset_login_rate_limit'
       );
 
-PROXIMA ACAO: item 2 do roadmap (secao 9) -- testar o fluxo ponta a ponta contra o banco
-real (link -> proposta -> aprovacao -> cliente -> login em /cliente). Isso exige acao do
-Victor no site publicado, pois meu ambiente nao alcanca o Supabase real.
+DESCOBERTA 28/07/2026 (importante -- leia isso antes de trabalhar em Dashboard, Venda
+Parcelada ou qualquer coisa que dependa de emprestimos existirem de verdade):
+
+Ate esta sessao, NENHUMA funcao no banco real inserta em credit_proposals. A tabela
+loans exige um proposal_id que vem de credit_proposals -- entao, na pratica, nunca
+existiu um jeito de um emprestimo nascer de verdade no banco, mesmo com todo o motor de
+calculo (packages/domain) pronto e testado. decide_client_proposal() so cria o registro
+em clients; nunca criou loan nem installments. Alem disso, RLS estava ligado em
+credit_proposals/loans/installments/payments desde a fundacao, mas sem NENHUMA policy --
+ou seja, nem o proprio admin do tenant conseguia ler essas tabelas.
+
+Corrigido pela migration 202607280001_create_loan.sql:
+- Policies de select (staff do proprio tenant) para credit_proposals, loans,
+  installments, payments.
+- Funcao create_loan_with_installments(): cria credit_proposals + loans + installments
+  atomicamente. Recebe as parcelas JA CALCULADAS (nao recalcula juros/datas em SQL --
+  decisao deliberada pra nao duplicar a logica financeira testada em
+  packages/domain/src/proposal.ts, ver comentario no topo da propria migration).
+
+O calculo em si acontece numa rota nova do apps/web (Next.js, que consegue importar
+packages/domain -- o index.html nao consegue, e HTML/JS solto sem build):
+apps/web/src/app/api/admin/loans/route.ts. Recebe o token de acesso do admin logado
+(Authorization: Bearer <access_token>, pego do window.supabaseClient.auth.getSession()
+no index.html), chama simulateProposal() ou simulateInstallmentSale() do domain, e so
+entao chama a RPC create_loan_with_installments() usando um client Supabase autenticado
+como o proprio admin (a RPC checa role_has_permission('proposals.approve') via
+auth.uid(), igual as outras).
+
+UI nova no index.html: card "💰 Empréstimo real (Supabase)" dentro da tela Contratos
+(id="contratos"), separado da calculadora de demonstracao que ja existia ali (essa
+continua so local/localStorage, nao mexi nela). O card novo carrega clientes reais da
+tabela clients, deixa escolher emprestimo comum ou venda parcelada, e chama
+/api/admin/loans de verdade.
+
+Validado local (npm test 106/106, typecheck, lint, build todos limpos) -- NUNCA testado
+contra o banco real. Falta:
+1. Confirmar a migration 202607280001 aplicada (mesmo processo da secao 4).
+2. Testar de ponta a ponta: aprovar um cliente -> Contratos -> Empréstimo real -> conferir
+   se aparece certinho no /cliente do cliente logado.
+
+PROXIMA ACAO: aplicar e confirmar a migration 202607280001_create_loan.sql, depois testar
+o fluxo completo (aprovacao -> criar emprestimo real -> /cliente mostrando os dados).
 
 Nesta sessao (28/07/2026), Victor gerou um GitHub fine-grained token com escopo so deste
 repo (Contents + Pull requests: read/write) pra eu poder commitar e dar push sozinho, sem
