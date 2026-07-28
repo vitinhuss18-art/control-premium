@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
 
 type Screen = "login" | "register";
+type LoginMode = "subscriber" | "client";
 const digits = (value: string, length: number) =>
   value.replace(/\D/g, "").slice(0, length);
 const maskCpf = (value: string) =>
@@ -37,6 +38,7 @@ function validCpf(value: string) {
 
 export function SubscriberAccess() {
   const [screen, setScreen] = useState<Screen>("login");
+  const [loginMode, setLoginMode] = useState<LoginMode>("subscriber");
   const [showSplash, setShowSplash] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -44,6 +46,8 @@ export function SubscriberAccess() {
   const [registerAttempted, setRegisterAttempted] = useState(false);
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
+  const [clientCpf, setClientCpf] = useState("");
+  const [clientPhoneLast4, setClientPhoneLast4] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     companyName: "",
@@ -83,6 +87,11 @@ export function SubscriberAccess() {
     window.requestAnimationFrame(() =>
       window.scrollTo({ top: 0, behavior: "auto" }),
     );
+  }
+
+  function goToLoginMode(nextMode: LoginMode) {
+    setMessage(null);
+    setLoginMode(nextMode);
   }
 
   async function login(event: React.FormEvent) {
@@ -127,6 +136,59 @@ export function SubscriberAccess() {
         kind: "error",
         text:
           error instanceof Error ? error.message : "Não foi possível entrar.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Login do cliente: sem senha, só CPF + 4 últimos dígitos do WhatsApp
+  // cadastrado. Chama a mesma RPC client_login_by_cpf() já usada no protótipo.
+  async function clientLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage(null);
+    const cpfDigitsValue = digits(clientCpf, 11);
+    const phoneLast4 = digits(clientPhoneLast4, 4);
+    if (!validCpf(clientCpf) || phoneLast4.length !== 4) {
+      setMessage({
+        kind: "error",
+        text: "Informe um CPF válido e os 4 últimos dígitos do seu WhatsApp.",
+      });
+      return;
+    }
+    if (!supabase) {
+      setMessage({
+        kind: "error",
+        text: "Login indisponível no momento.",
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("client_login_by_cpf", {
+        p_cpf: cpfDigitsValue,
+        p_phone_last4: phoneLast4,
+      });
+      if (error || !data || data.length === 0) {
+        throw new Error("CPF ou WhatsApp não conferem.");
+      }
+      const client = data[0] as {
+        client_id: string;
+        full_name: string;
+        status: string;
+      };
+      window.sessionStorage.setItem(
+        "controlPremiumClient",
+        JSON.stringify(client),
+      );
+      window.location.assign("/cliente");
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível entrar.",
       });
     } finally {
       setBusy(false);
@@ -248,66 +310,134 @@ export function SubscriberAccess() {
         <section className="access-panel">
           {screen === "login" && (
             <div className="access-card framed-card">
-              <span className="eyebrow">Área do assinante</span>
-              <h2>Bem-vindo de volta</h2>
-              <p className="muted">
-                Use o CPF cadastrado e sua senha para continuar.
-              </p>
-              <form onSubmit={login}>
-                <label>
-                  CPF
-                  <input
-                    value={cpf}
-                    onChange={(event) => setCpf(maskCpf(event.target.value))}
-                    inputMode="numeric"
-                    autoComplete="username"
-                    placeholder="000.000.000-00"
-                  />
-                </label>
-                <label>
-                  Senha
-                  <span className="password-field">
-                    <input
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="Sua senha"
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={
-                        showPassword ? "Ocultar senha" : "Mostrar senha"
-                      }
-                    >
-                      {showPassword ? "Ocultar" : "Mostrar"}
-                    </button>
-                  </span>
-                </label>
-                {message && (
-                  <div className={`form-message ${message.kind}`}>
-                    {message.text}
-                  </div>
-                )}
-                <button className="primary-button" disabled={busy}>
-                  {busy ? "Entrando..." : "Entrar e continuar"}
+              <div
+                className="login-mode-toggle"
+                role="tablist"
+                aria-label="Tipo de acesso"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={loginMode === "subscriber"}
+                  className={loginMode === "subscriber" ? "active" : ""}
+                  onClick={() => goToLoginMode("subscriber")}
+                >
+                  Sou assinante
                 </button>
-              </form>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={loginMode === "client"}
+                  className={loginMode === "client" ? "active" : ""}
+                  onClick={() => goToLoginMode("client")}
+                >
+                  Sou cliente
+                </button>
+              </div>
+
+              {loginMode === "subscriber" ? (
+                <>
+                  <h2>Bem-vindo de volta</h2>
+                  <p className="muted">
+                    Use o CPF cadastrado e sua senha para continuar.
+                  </p>
+                  <form onSubmit={login}>
+                    <label>
+                      CPF
+                      <input
+                        value={cpf}
+                        onChange={(event) => setCpf(maskCpf(event.target.value))}
+                        inputMode="numeric"
+                        autoComplete="username"
+                        placeholder="000.000.000-00"
+                      />
+                    </label>
+                    <label>
+                      Senha
+                      <span className="password-field">
+                        <input
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="Sua senha"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowPassword((visible) => !visible)}
+                          aria-label={
+                            showPassword ? "Ocultar senha" : "Mostrar senha"
+                          }
+                        >
+                          {showPassword ? "Ocultar" : "Mostrar"}
+                        </button>
+                      </span>
+                    </label>
+                    {message && (
+                      <div className={`form-message ${message.kind}`}>
+                        {message.text}
+                      </div>
+                    )}
+                    <button className="primary-button" disabled={busy}>
+                      {busy ? "Entrando..." : "Entrar e continuar"}
+                    </button>
+                  </form>
+                  <div className="signup-prompt">
+                    Ainda não tem conta?{" "}
+                    <button onClick={() => goToScreen("register")}>
+                      Cadastre-se
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2>Área do cliente</h2>
+                  <p className="muted">
+                    Use o CPF cadastrado e os 4 últimos dígitos do seu
+                    WhatsApp para continuar.
+                  </p>
+                  <form onSubmit={clientLogin}>
+                    <label>
+                      CPF
+                      <input
+                        value={clientCpf}
+                        onChange={(event) =>
+                          setClientCpf(maskCpf(event.target.value))
+                        }
+                        inputMode="numeric"
+                        autoComplete="username"
+                        placeholder="000.000.000-00"
+                      />
+                    </label>
+                    <label>
+                      4 últimos dígitos do WhatsApp
+                      <input
+                        value={clientPhoneLast4}
+                        onChange={(event) =>
+                          setClientPhoneLast4(digits(event.target.value, 4))
+                        }
+                        inputMode="numeric"
+                        placeholder="0000"
+                        maxLength={4}
+                      />
+                    </label>
+                    {message && (
+                      <div className={`form-message ${message.kind}`}>
+                        {message.text}
+                      </div>
+                    )}
+                    <button className="primary-button" disabled={busy}>
+                      {busy ? "Entrando..." : "Entrar e continuar"}
+                    </button>
+                  </form>
+                </>
+              )}
+
               <div className="security-badges" aria-label="Proteções do acesso">
                 <span>◇ Conexão criptografada</span>
                 <span>✓ Dados protegidos</span>
               </div>
-              <div className="signup-prompt">
-                Ainda não tem conta?{" "}
-                <button onClick={() => goToScreen("register")}>
-                  Cadastre-se
-                </button>
-              </div>
-              <a className="client-link" href="/prototype.html">
-                Sou cliente de uma empresa
-              </a>
             </div>
           )}
 
