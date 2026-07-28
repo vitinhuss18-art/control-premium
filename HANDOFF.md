@@ -112,6 +112,27 @@ SQL Editor do Supabase e rodadas com sucesso de verdade (ver o aviso acima sobre
 confirmacoes nao confiaveis). Sem a 13, a tela de Propostas vai falhar ao decidir uma
 proposta; sem a 14, o cliente real nao consegue entrar.
 
+ATUALIZACAO 28/07/2026: o repo hoje tem migracoes ate a 17
+(202607270004_owner_dashboard.sql). Nao consigo verificar por conta propria se 13-17
+foram aplicadas -- meu ambiente de execucao nao tem rota de rede ate *.supabase.co (nem
+teria a service_role key, que so existe na Vercel). Query rapida pra Victor rodar no SQL
+Editor e confirmar de uma vez (cola e roda):
+
+    select routine_name from information_schema.routines
+    where routine_schema = 'public'
+      and routine_name in (
+        'decide_client_proposal', 'connect_tenant_whatsapp', 'client_login_by_cpf',
+        'consume_login_rate_limit', 'reset_login_rate_limit'
+      );
+
+Se as 5 funcoes aparecerem, as migracoes 13-17 estao aplicadas.
+
+Nesta sessao (28/07/2026), Victor gerou um GitHub fine-grained token com escopo so deste
+repo (Contents + Pull requests: read/write) pra eu poder commitar e dar push sozinho, sem
+pedir confirmacao a cada passo. O token foi configurado localmente no remote git (nao fica
+salvo em nenhum arquivo do repositorio). Continuo sem qualquer acesso de rede ao Supabase
+-- isso nao mudou e nao da pra contornar por aqui.
+
 Chave publica (segura para expor no client-side, ja usada em index.html e em
 apps/web/src/app/cadastro):
 
@@ -195,9 +216,14 @@ completa. Resumo do que bloqueia o que:
 
 ## 9. Roadmap -- proximos passos, em ordem de dependencia
 
-1. Confirmar que as migracoes 13 e 14 foram aplicadas de verdade (ver secao 4).
+1. Confirmar que as migracoes 13 a 17 foram aplicadas de verdade (ver secao 4 e a query
+   pronta la).
 2. Testar o fluxo completo ponta a ponta: link -> proposta -> aprovacao -> cliente criado
-   -> login do cliente.
+   -> login do cliente -> /cliente mostrando os emprestimos (rota /cliente ja construida
+   em 28/07/2026: apps/web/src/app/cliente/page.tsx + apps/web/src/app/api/cliente/*,
+   sessao do cliente via cookie httpOnly assinado, ver commit "feat: rota /cliente de
+   verdade no apps/web"). Falta validar isso contra o banco real -- so rodou local com
+   npm test/typecheck/build, nunca contra dados reais.
 3. Conectar connect_tenant_whatsapp() a uma tela real (hoje so existe a funcao no banco,
    sem UI ainda) -- e o "a conexao do assinante e no momento que ele cadastra o WhatsApp
    de trabalho" que Victor pediu.
