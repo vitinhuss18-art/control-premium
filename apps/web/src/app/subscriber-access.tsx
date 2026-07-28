@@ -143,7 +143,10 @@ export function SubscriberAccess() {
   }
 
   // Login do cliente: sem senha, só CPF + 4 últimos dígitos do WhatsApp
-  // cadastrado. Chama a mesma RPC client_login_by_cpf() já usada no protótipo.
+  // cadastrado. A validação acontece no servidor (rota /api/cliente/login),
+  // que confirma as credenciais contra o banco e devolve um cookie httpOnly
+  // assinado — o navegador nunca fica sabendo o client_id/tenant_id
+  // diretamente, só o nome/status pra exibir aqui.
   async function clientLogin(event: React.FormEvent) {
     event.preventDefault();
     setMessage(null);
@@ -156,30 +159,25 @@ export function SubscriberAccess() {
       });
       return;
     }
-    if (!supabase) {
-      setMessage({
-        kind: "error",
-        text: "Login indisponível no momento.",
-      });
-      return;
-    }
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("client_login_by_cpf", {
-        p_cpf: cpfDigitsValue,
-        p_phone_last4: phoneLast4,
+      const response = await fetch("/api/cliente/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cpf: cpfDigitsValue, phoneLast4 }),
       });
-      if (error || !data || data.length === 0) {
-        throw new Error("CPF ou WhatsApp não conferem.");
+      const body = (await response.json().catch(() => null)) as {
+        fullName?: string;
+        status?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !body?.fullName) {
+        throw new Error(body?.message ?? "Não foi possível entrar.");
       }
-      const client = data[0] as {
-        client_id: string;
-        full_name: string;
-        status: string;
-      };
       window.sessionStorage.setItem(
         "controlPremiumClient",
-        JSON.stringify(client),
+        JSON.stringify({ full_name: body.fullName, status: body.status }),
       );
       window.location.assign("/cliente");
     } catch (error) {
