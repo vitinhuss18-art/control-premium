@@ -1806,6 +1806,15 @@ function loginRapido() {
 
 function voltarLogin() {
   fecharMenu();
+  // Se é uma sessão real (veio do login novo via Supabase), precisa deslogar
+  // de verdade e mandar pra tela de login real — senão a sessão continua
+  // ativa e um /painel recarregado voltaria direto pro dashboard sozinho.
+  if (usuarioAtual && usuarioAtual.real && window.supabaseClient) {
+    window.supabaseClient.auth.signOut().finally(() => {
+      window.location.assign('/');
+    });
+    return;
+  }
   perfilAtual = null;
   usuarioAtual = null;
   document.getElementById('loginInput').value = '';
