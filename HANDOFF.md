@@ -107,16 +107,15 @@ onde possivel):
     ultimos digitos do WhatsApp. Remove a assinatura anterior que aceitava somente CPF
     e recusa credenciais ambiguas entre tenants.
 
-ACAO PENDENTE IMEDIATA: confirmar com Victor se as migracoes 13 e 14 ja foram coladas no
-SQL Editor do Supabase e rodadas com sucesso de verdade (ver o aviso acima sobre
-confirmacoes nao confiaveis). Sem a 13, a tela de Propostas vai falhar ao decidir uma
-proposta; sem a 14, o cliente real nao consegue entrar.
+CONFIRMADO 28/07/2026: Victor rodou a query abaixo no SQL Editor do Supabase e as 5
+funcoes retornaram -- migracoes 13 a 17 estao aplicadas de verdade no banco real
+(decide_client_proposal, connect_tenant_whatsapp, client_login_by_cpf,
+consume_login_rate_limit, reset_login_rate_limit). Nao verificado por mim diretamente
+(sem rota de rede ate *.supabase.co), confiando na confirmacao com print/resultado da
+query, que e o padrao aceitavel descrito na secao 4.
 
-ATUALIZACAO 28/07/2026: o repo hoje tem migracoes ate a 17
-(202607270004_owner_dashboard.sql). Nao consigo verificar por conta propria se 13-17
-foram aplicadas -- meu ambiente de execucao nao tem rota de rede ate *.supabase.co (nem
-teria a service_role key, que so existe na Vercel). Query rapida pra Victor rodar no SQL
-Editor e confirmar de uma vez (cola e roda):
+Query usada (fica registrada aqui caso precise confirmar de novo no futuro apos novas
+migracoes):
 
     select routine_name from information_schema.routines
     where routine_schema = 'public'
@@ -125,7 +124,9 @@ Editor e confirmar de uma vez (cola e roda):
         'consume_login_rate_limit', 'reset_login_rate_limit'
       );
 
-Se as 5 funcoes aparecerem, as migracoes 13-17 estao aplicadas.
+PROXIMA ACAO: item 2 do roadmap (secao 9) -- testar o fluxo ponta a ponta contra o banco
+real (link -> proposta -> aprovacao -> cliente -> login em /cliente). Isso exige acao do
+Victor no site publicado, pois meu ambiente nao alcanca o Supabase real.
 
 Nesta sessao (28/07/2026), Victor gerou um GitHub fine-grained token com escopo so deste
 repo (Contents + Pull requests: read/write) pra eu poder commitar e dar push sozinho, sem
