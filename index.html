@@ -3129,3 +3129,90 @@ document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+document.addEventListener('DOMContentLoaded', init);
+function mostrarLoginAssinanteReal() {
+  document.getElementById('loginAssinanteReal').style.display = 'block';
+}
+function mostrarCriarContaAssinanteReal() {
+  document.getElementById('criarContaAssinanteReal').style.display = 'block';
+}
+
+async function entrarAssinanteReal() {
+  const erro = document.getElementById('assLoginErro');
+  erro.style.display = 'none';
+  if (!window.supabaseClient) {
+    erro.textContent = '⚠ Supabase não está configurado.';
+    erro.style.display = 'block';
+    return;
+  }
+  const email = document.getElementById('assLoginEmail').value.trim();
+  const senha = document.getElementById('assLoginSenha').value;
+  const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password: senha });
+  if (error) {
+    erro.textContent = 'E-mail ou senha inválidos.';
+    erro.style.display = 'block';
+    return;
+  }
+  await entrarComoAssinanteAposSupabase();
+}
+
+async function criarContaAssinanteReal() {
+  const erro = document.getElementById('assLoginErro');
+  erro.style.display = 'none';
+  const email = document.getElementById('assLoginEmail').value.trim();
+  const senha = document.getElementById('assLoginSenha').value;
+  const legal = document.getElementById('novaEmpresaLegal').value.trim();
+  const fantasia = document.getElementById('novaEmpresaFantasia').value.trim();
+  const nomeAdmin = document.getElementById('novoAdminNome').value.trim();
+
+  if (!email || !senha || !legal || !fantasia || !nomeAdmin) {
+    erro.textContent = 'Preencha e-mail, senha, razão social, nome fantasia e seu nome.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  try {
+    const signUp = await window.supabaseClient.auth.signUp({ email, password: senha });
+    if (signUp.error) throw signUp.error;
+    if (!signUp.data.session) {
+      erro.style.color = 'var(--primary)';
+      erro.textContent = 'Conta criada! Confirme seu e-mail e depois clique em "Entrar como assinante" aqui mesmo.';
+      erro.style.display = 'block';
+      return;
+    }
+    const rpc = await window.supabaseClient.rpc('bootstrap_tenant', {
+      tenant_legal_name: legal,
+      tenant_display_name: fantasia,
+      administrator_full_name: nomeAdmin
+    });
+    if (rpc.error) throw rpc.error;
+    await entrarComoAssinanteAposSupabase();
+  } catch (e) {
+    erro.style.color = 'var(--error)';
+    erro.textContent = e.message || 'Não foi possível criar a empresa.';
+    erro.style.display = 'block';
+  }
+}
+
+async function entrarComoAssinanteAposSupabase() {
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) return;
+
+  let nomeReal = sessao.session.user.email;
+  try {
+    const { data: perfil } = await window.supabaseClient
+      .from('profiles')
+      .select('full_name, tenant_id')
+      .eq('id', sessao.session.user.id)
+      .maybeSingle();
+    if (perfil?.full_name) nomeReal = perfil.full_name;
+  } catch (e) {}
+
+  perfilAtual = 'admin';
+  usuarioAtual = { cpf: null, nome: nomeReal, perfil: 'admin', assinanteId: 'supabase_real', real: true };
+  adminNamePorId[assinanteAtualId()] = nomeReal;
+  montarMenu();
+  document.getElementById('loginAviso').style.display = 'none';
+  show('renovacoes');
+  registrarAuditoria('🔑 Login assinante (real)', nomeReal);
+}
