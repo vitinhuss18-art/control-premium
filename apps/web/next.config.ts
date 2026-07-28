@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
     "@control-premium/integrations",
     "@control-premium/ui",
   ],
+  async rewrites() {
+    return [
+      // Serve o protótipo direto em /painel (sem iframe), mantendo a URL /painel.
+      { source: "/painel", destination: "/prototype.html" },
+    ];
+  },
   async headers() {
     return [
       {

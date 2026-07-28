@@ -803,16 +803,35 @@
     console.warn('⚠ Supabase não configurado - usando localStorage apenas', e.message);
   }
 
-  // Verificar autenticação ao carregar
-  if (supabaseClient) {
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        console.log('✓ Usuário autenticado:', data.session.user.email);
-      } else {
+  // Verificar autenticação ao carregar. Guardamos essa checagem numa Promise
+  // (window.__cpAuthCheck) pra init() poder esperar o resultado antes de decidir
+  // se mostra a tela de login antiga (CPF+WhatsApp) ou pula direto pro dashboard,
+  // já que quem chegou aqui pelo login novo (subscriber-access.tsx) já está
+  // autenticado de verdade no Supabase.
+  window.__cpAuthCheck = (async function () {
+    if (!supabaseClient) return null;
+    try {
+      const { data } = await supabaseClient.auth.getSession();
+      if (!data.session) {
         console.log('⚠ Nenhum usuário autenticado');
+        return null;
       }
-    });
-  }
+      console.log('✓ Usuário autenticado:', data.session.user.email);
+      const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', data.session.user.id)
+        .maybeSingle();
+      if (error) {
+        console.warn('⚠ Falha ao buscar perfil do assinante:', error.message);
+        return { session: data.session, profile: null };
+      }
+      return { session: data.session, profile };
+    } catch (e) {
+      console.warn('⚠ Falha ao verificar sessão do Supabase:', e.message);
+      return null;
+    }
+  })();
 
   // [SUPABASE] Envia um novo cliente para a tabela public.clients.
   // Requer que o usuário logado tenha um tenant_id em public.profiles (RLS aplica isso).
@@ -3106,7 +3125,31 @@ function init() {
   const splash = document.getElementById('splash');
   setTimeout(() => {
     splash.classList.add('splash-fadeout');
-    setTimeout(() => { show('login'); }, 480);
+    setTimeout(async () => {
+      const auth = window.__cpAuthCheck ? await window.__cpAuthCheck : null;
+      const papeisComPainel = ['super_admin', 'admin', 'manager'];
+      if (auth && auth.session && auth.profile && papeisComPainel.includes(auth.profile.role)) {
+        // Sessão real do Supabase (veio do login novo /assinante) — pula a
+        // tela de CPF+WhatsApp e entra direto no dashboard.
+        perfilAtual = 'admin';
+        usuarioAtual = {
+          nome: auth.profile.full_name || auth.session.user.email,
+          perfil: 'admin',
+          assinanteId: 'demo1',
+          real: true,
+          email: auth.session.user.email
+        };
+        montarMenu();
+        show('dashboard');
+        registrarAuditoria('🔑 Login assinante (Supabase)', auth.session.user.email);
+        const greeting = document.querySelector('#dashboard .greeting');
+        if (greeting) {
+          greeting.innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${usuarioAtual.nome}</span>`;
+        }
+      } else {
+        show('login');
+      }
+    }, 480);
   }, 1900);
 
   iniciarRelogio();
