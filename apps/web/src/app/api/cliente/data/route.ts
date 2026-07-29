@@ -68,6 +68,12 @@ export async function GET(request: Request) {
     );
   }
 
+  console.log("cliente/data diagnostic:", {
+    sessionClientId: session.clientId,
+    sessionTenantId: session.tenantId,
+    loansFound: loans?.length ?? 0,
+  });
+
   const loanRows = (loans ?? []) as unknown as LoanRow[];
 
   const shaped = loanRows.map((loan) => {
