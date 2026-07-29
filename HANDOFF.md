@@ -109,6 +109,14 @@ onde possivel):
 18. 202607280001_create_loan.sql -- CONFIRMADO 28/07/2026 (sessao seguinte). Ver
     "DESCOBERTA 28/07/2026" logo abaixo -- essa e a peca mais importante de todas as
     migracoes ate agora.
+19. 202607280002_fix_signup_link_rls_check.sql -- AINDA NAO CONFIRMADO COMO APLICADO por
+    Victor. Corrige bug critico: NENHUMA proposta anonima (fluxo /cadastro) conseguia ser
+    registrada desde a migration 13 (250005), porque a policy de insert em
+    client_proposals fazia EXISTS numa subquery contra client_signup_links, que tem RLS
+    sem policy de select pro anon -- a subquery sempre via zero linhas, EXISTS sempre
+    falso, insert sempre barrado. Trocado por funcao security definer
+    signup_link_is_active(). PRECISA SER APLICADA E TESTADA antes de qualquer outro teste
+    do fluxo de cadastro.
 
 CONFIRMADO 28/07/2026 (migration 18): na primeira tentativa de checar, a query de
 policies trouxe nomes como credit_proposals_select_same_tenant,
