@@ -106,9 +106,32 @@ onde possivel):
 14. 202607260002_client_login_by_cpf.sql -- login de cliente real por CPF + quatro
     ultimos digitos do WhatsApp. Remove a assinatura anterior que aceitava somente CPF
     e recusa credenciais ambiguas entre tenants.
-18. 202607280001_create_loan.sql -- AINDA NAO CONFIRMADO COMO APLICADO por Victor. Ver
+18. 202607280001_create_loan.sql -- CONFIRMADO 28/07/2026 (sessao seguinte). Ver
     "DESCOBERTA 28/07/2026" logo abaixo -- essa e a peca mais importante de todas as
     migracoes ate agora.
+
+CONFIRMADO 28/07/2026 (migration 18): na primeira tentativa de checar, a query de
+policies trouxe nomes como credit_proposals_select_same_tenant,
+credit_proposals_insert_staff etc. -- nomes que NAO existem em nenhuma migration do
+repositorio. Ou seja, a migration 18 nunca tinha sido aplicada de fato (nem a funcao nem
+as policies dela existiam -- o que estava la vinha de outro lugar, provavelmente o Codex
+mexendo direto no SQL Editor sem deixar migration commitada, reforca o alerta da secao 6).
+Reaplicada a migration inteira (sem conflito de nomes) e confirmado via:
+
+    select routine_name from information_schema.routines
+    where routine_schema = 'public' and routine_name = 'create_loan_with_installments';
+    -- retornou 1 linha
+
+    select policyname from pg_policies
+    where schemaname = 'public'
+      and policyname in ('credit_proposals_select_staff', 'loans_select_staff',
+        'installments_select_staff', 'payments_select_staff');
+    -- retornou as 4 linhas
+
+Licao reforcada: "sucesso"/"Success. No rows returned" no SQL Editor NAO confirma que uma
+migration de CREATE POLICY/CREATE FUNCTION rodou como esperado -- so confirma que nao deu
+erro de sintaxe. Sempre pedir o resultado de uma query de verificacao que busque pelo nome
+exato do objeto esperado.
 
 CONFIRMADO 28/07/2026: Victor rodou a query abaixo no SQL Editor do Supabase e as 5
 funcoes retornaram -- migracoes 13 a 17 estao aplicadas de verdade no banco real
@@ -167,8 +190,9 @@ contra o banco real. Falta:
 2. Testar de ponta a ponta: aprovar um cliente -> Contratos -> Empréstimo real -> conferir
    se aparece certinho no /cliente do cliente logado.
 
-PROXIMA ACAO: aplicar e confirmar a migration 202607280001_create_loan.sql, depois testar
-o fluxo completo (aprovacao -> criar emprestimo real -> /cliente mostrando os dados).
+PROXIMA ACAO: migration 202607280001_create_loan.sql confirmada aplicada (ver acima).
+Falta testar o fluxo completo (aprovacao -> criar emprestimo real -> /cliente mostrando os
+dados) -- isso ainda NAO foi feito contra o banco real.
 
 Nesta sessao (28/07/2026), Victor gerou um GitHub fine-grained token com escopo so deste
 repo (Contents + Pull requests: read/write) pra eu poder commitar e dar push sozinho, sem
