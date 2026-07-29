@@ -104,6 +104,12 @@ export async function POST(req: Request) {
     });
 
   if (proposalError) {
+    console.error("client_proposals insert failed:", {
+      message: proposalError.message,
+      details: proposalError.details,
+      hint: proposalError.hint,
+      code: proposalError.code,
+    });
     return NextResponse.json(
       { message: "Não foi possível registrar sua proposta." },
       { status: 500 },
