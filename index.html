@@ -1492,7 +1492,7 @@ function carregarEstado() {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
       const parsed = JSON.parse(data);
-      if (parsed.clientesDB) clientesDB = parsed.clientesDB;
+      if (parsed.clientesDB) clientesDB = parsed.clientesDB.filter(c => c.assinanteId !== 'demo1');
       if (parsed.cobradoresDB) cobradoresDB = parsed.cobradoresDB;
       if (parsed.assinaturaVencimento) assinaturaVencimento = new Date(parsed.assinaturaVencimento);
       if (parsed.dadosAssinantePorId) dadosAssinantePorId = parsed.dadosAssinantePorId;
@@ -2301,13 +2301,8 @@ function classificarRisco(score) {
 // CLIENTES
 // ============================================================
 function initClientes() {
-  if (clientesDB.length === 0) {
-    clientesDB = [
-      { id: 'joao', assinanteId: 'demo1', iniciais: 'JS', nome: 'João Silva', doc: '123.***.***-00', tel: '(27) 9****-1234', sms: '(27) 9****-1234', insta: '@joao', chavePix: 'joao@email.com', endereco: 'R. das Flores, 123', regiao: 'Zona Norte', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 0, valorParcela: 0, jurosDia: 0, historico: [{ atrasoDias: 0, hora: 9 }, { atrasoDias: 0, hora: 8 }, { atrasoDias: 0, hora: 10 }, { atrasoDias: 0, hora: 8 }, { atrasoDias: -1, hora: 20 }] },
-      { id: 'carlos', assinanteId: 'demo1', iniciais: 'CA', nome: 'Carlos Antunes', doc: '456.***.***-11', tel: '(27) 9****-5678', sms: '(27) 9****-5678', insta: '@carlos', chavePix: '(27) 99999-5678', endereco: 'Av. Central, 456', regiao: 'Zona Sul', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 180, valorParcela: 60, jurosDia: 12, historico: [{ atrasoDias: 3, hora: 22 }, { atrasoDias: 1, hora: 21 }, { atrasoDias: 2, hora: 23 }, { atrasoDias: 0, hora: 19 }, { atrasoDias: 4, hora: 22 }] },
-      { id: 'mariana', assinanteId: 'demo1', iniciais: 'MS', nome: 'Mariana Santos', doc: '789.***.***-22', tel: '(27) 9****-9012', sms: '(27) 9****-9012', insta: '@mariana', chavePix: '789.***.***-22', endereco: 'R. dos Ipês, 78', regiao: 'Centro', foto: null, docFrenteFoto: null, docVersoFoto: null, fotoFachada: null, criadoEm: new Date().toISOString(), capital: 650, valorParcela: 105, jurosDia: 30, historico: [{ atrasoDias: 0, hora: 15 }, { atrasoDias: 1, hora: 19 }, { atrasoDias: 0, hora: 14 }, { atrasoDias: 0, hora: 16 }, { atrasoDias: 0, hora: 13 }] },
-    ];
-  }
+  // Fictícios de demonstração removidos a pedido — a partir de agora só
+  // aparecem clientes reais (Supabase), vindos de carregarClientesReais().
 }
 // Retorna o registro completo do cliente atualmente logado (fonte única de verdade do saldo/score dele)
 function clienteLogado() {
@@ -2318,26 +2313,8 @@ function clienteLogado() {
 function renderizarClientes() {
   const lista = document.getElementById('listaClientes');
   if (!lista) return;
-  const meusClientes = clientesDoAssinante();
-  const mockHtml = meusClientes.map(c => {
-    const { score } = calcularScore(c.historico);
-    const risco = classificarRisco(score);
-    const ultimo = c.historico.length > 0 ? c.historico[c.historico.length - 1] : null;
-    const situacao = ultimo && ultimo.atrasoDias > 0 ? '⏰ Atrasado' : '✅ Em dia';
-    const cor = situacao.includes('Atrasado') ? 'var(--error)' : 'var(--primary)';
-    const avatarConteudo = c.foto ? `<img src="${c.foto}" alt="${c.nome}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : c.iniciais;
-    return `<div class="client-item">
-      <div class="avatar ${score >= 75 ? 'avatar-premium' : ''}">${avatarConteudo}</div>
-      <div class="info">
-        <div class="n">${c.nome} ${score >= 75 ? '🌟' : ''}</div>
-        <div class="s">${c.tel}</div>
-      </div>
-      <span class="badge ${risco.classe}">${score}</span>
-      <span style="font-size:10px;font-weight:700;color:${cor};">${situacao}</span>
-    </div>`;
-  }).join('');
   // Clientes reais (Supabase) ainda não têm histórico de pagamento pra calcular
-  // score/risco como os de demo — por isso mostram um selo simples de status.
+  // score/risco como os antigos de demo — por isso mostram um selo simples de status.
   const statusLabel = {
     approved: '✅ Aprovado',
     pending: '⏳ Pendente',
@@ -2356,10 +2333,11 @@ function renderizarClientes() {
       <span style="font-size:10px;font-weight:700;">${situacao}</span>
     </div>`;
   }).join('');
-  lista.innerHTML = reaisHtml + mockHtml;
+  lista.innerHTML = reaisHtml || '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:12px;">Nenhum cliente cadastrado ainda.</div>';
   const kpi = document.getElementById('kpiClientes');
-  if (kpi) kpi.textContent = meusClientes.length + clientesReaisDB.length;
+  if (kpi) kpi.textContent = clientesReaisDB.length;
 }
+
 
 // [SUPABASE] Busca os clientes reais (public.clients) do tenant logado e
 // atualiza a lista na aba Clientes junto com os fictícios de demo.
