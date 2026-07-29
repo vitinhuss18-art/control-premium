@@ -859,9 +859,16 @@
     <button class="btn-primary" onclick="entrar()">🚀 Entrar no Sistema</button>
     <button class="btn-secondary" id="btnLoginRapido" style="display:none;margin-top:10px;" onclick="loginRapido()">🔓 Continuar como <span id="loginRapidoNome"></span></button>
     <div class="hint" id="loginAviso" style="display:none;color:var(--error);">Dados de acesso inválidos</div>
-    <div class="hint">Clientes reais: informe também os 4 últimos dígitos do WhatsApp.</div>
-    <div class="hint">Teste: 000.000.000-00 (admin) · 111.111.111-11 (cobrador) · 123.456.789-00 (cliente)</div>
-    <div class="hint">Outro assinante (base isolada): 999.999.999-99</div>
+    <div class="hint">Clientes: informe CPF e os 4 últimos dígitos do WhatsApp cadastrado.</div>
+
+    <div style="text-align:center;margin:14px 0 6px;color:var(--grey2);font-size:11px;">ou, se você é o assinante (admin/cobrador)</div>
+    <button class="btn-secondary" style="width:100%;" onclick="mostrarLoginContaReal()">🔐 Entrar com e-mail e senha</button>
+    <div id="loginContaRealForm" style="display:none;margin-top:12px;">
+      <div class="field">📧 <input id="loginRealEmail" type="email" placeholder="E-mail"></div>
+      <div class="field">🔑 <input id="loginRealSenha" type="password" placeholder="Senha"></div>
+      <button class="btn-primary" style="width:100%;" onclick="entrarComContaReal()">Entrar</button>
+      <div class="hint" id="loginRealErro" style="display:none;color:var(--error);"></div>
+    </div>
   </div>
 
   <!-- DASHBOARD -->
@@ -1678,12 +1685,11 @@ function fecharNotificacoes() {
 // ============================================================
 // USUÁRIOS
 // ============================================================
-const usuariosDB = [
-  { cpf: '00000000000', nome: 'Admin Master', perfil: 'admin', assinanteId: 'demo1' },
-  { cpf: '11111111111', nome: 'Cobrador', perfil: 'cobrador', assinanteId: 'demo1' },
-  // Segundo assinante (outra empresa) só para provar que a base fica isolada entre contas diferentes
-  { cpf: '99999999999', nome: 'Admin Dois', perfil: 'admin', assinanteId: 'demo2' },
-];
+// Contas fictícias de teste removidas — login de admin/cobrador agora é real
+// (Supabase Auth + tabela profiles, ver entrarComContaReal()). Continua vazio
+// aqui só pra não quebrar o fluxo de cobradores/clientes criados em runtime
+// (usuariosExtras), que ainda é remontado nesta lista no carregarEstado().
+const usuariosDB = [];
 
 const menuPorPerfil = {
   admin: [
@@ -1788,6 +1794,75 @@ async function entrar() {
 // Cliente aprovado pelo fluxo do link (existe de verdade no Supabase, não
 // nos dados de demonstração). O acesso exige CPF e os quatro últimos dígitos
 // do WhatsApp cadastrado, evitando autenticação baseada apenas em um dado público.
+function mostrarLoginContaReal() {
+  const form = document.getElementById('loginContaRealForm');
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+// Login real de admin/cobrador (conta do assinante, Supabase Auth) — em vez das
+// contas fictícias de teste, autentica de verdade e resolve papel/tenant pela
+// tabela public.profiles (RLS já permite o próprio usuário ler seu registro).
+async function entrarComContaReal() {
+  const email = document.getElementById('loginRealEmail').value.trim();
+  const senha = document.getElementById('loginRealSenha').value;
+  const erro = document.getElementById('loginRealErro');
+  erro.style.display = 'none';
+
+  if (!window.supabaseClient) {
+    erro.textContent = 'Supabase não está configurado.';
+    erro.style.display = 'block';
+    return;
+  }
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const { data: signIn, error: signInError } = await window.supabaseClient.auth.signInWithPassword({
+    email, password: senha,
+  });
+  if (signInError || !signIn.session) {
+    erro.textContent = 'E-mail ou senha inválidos.';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const { data: perfil, error: perfilError } = await window.supabaseClient
+    .from('profiles')
+    .select('tenant_id, role, full_name')
+    .eq('id', signIn.session.user.id)
+    .maybeSingle();
+
+  if (perfilError || !perfil) {
+    erro.textContent = 'Não foi possível carregar seu perfil.';
+    erro.style.display = 'block';
+    await window.supabaseClient.auth.signOut();
+    return;
+  }
+
+  const perfilLocal = perfil.role === 'collector' ? 'cobrador' : 'admin';
+  usuarioAtual = {
+    nome: perfil.full_name,
+    perfil: perfilLocal,
+    assinanteId: perfil.tenant_id,
+    real: true,
+  };
+  perfilAtual = perfilLocal;
+  montarMenu();
+
+  if (perfilLocal === 'admin') {
+    show('dashboard');
+    registrarAuditoria('🔑 Login admin (conta real)', perfil.full_name);
+    document.querySelector('#dashboard .greeting').innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${perfil.full_name}</span>`;
+  } else {
+    show('cobrador');
+    registrarAuditoria('🔑 Login cobrador (conta real)', perfil.full_name, { publico: 'cobrador' });
+    document.querySelector('#cobrador .greeting').textContent = `Bem-vindo, ${perfil.full_name}`;
+    renderizarRotaCobrador();
+  }
+}
+
 async function tentarLoginClienteReal(cpf, phoneLast4) {
   const aviso = document.getElementById('loginAviso');
   if (!window.supabaseClient || cpf.length !== 11 || phoneLast4.length !== 4) return false;
