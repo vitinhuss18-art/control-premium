@@ -817,13 +817,32 @@
   // [SUPABASE] Envia um novo cliente para a tabela public.clients.
   // Requer que o usuário logado tenha um tenant_id em public.profiles (RLS aplica isso).
   // Se o Supabase não estiver configurado, retorna sem fazer nada (fluxo local continua intacto).
+  //
+  // BUG CORRIGIDO: o insert nunca mandava tenant_id, então a policy
+  // clients_insert_same_tenant (with check tenant_id = current_tenant_id())
+  // rejeitava toda inserção -- o cliente ficava só no localStorage, nunca ia
+  // pro banco real, e o erro era engolido (só um console.warn no caller).
   window.sincronizarClienteComSupabase = async function ({ nome, cpfMask, whats, chavePix, endereco, regiao }) {
     if (!window.supabaseClient) return;
+    const { data: sessao } = await window.supabaseClient.auth.getSession();
+    if (!sessao.session) throw new Error('Sem sessão ativa no Supabase');
+
+    const { data: perfil, error: perfilError } = await window.supabaseClient
+      .from('profiles')
+      .select('tenant_id')
+      .eq('id', sessao.session.user.id)
+      .maybeSingle();
+    if (perfilError || !perfil?.tenant_id) {
+      throw new Error(perfilError?.message || 'Não foi possível identificar sua empresa (tenant)');
+    }
+
     var cpfLimpo = (cpfMask || '').replace(/\D/g, '');
     const { error } = await window.supabaseClient.from('clients').insert({
+      tenant_id: perfil.tenant_id,
       full_name: nome,
       cpf: cpfLimpo,
       phone: whats,
+      status: 'approved',
       metadata: { chave_pix: chavePix || null, endereco: endereco || null, regiao: regiao || null }
     });
     if (error) throw error;
@@ -901,10 +920,10 @@
         <div class="bar" style="height:95%;background:linear-gradient(180deg, var(--secondary), rgba(41,182,246,0.3))"><span class="tooltip">R$ 3.400</span></div>
         <div class="bar" style="height:70%"><span class="tooltip">R$ 2.300</span></div>
       </div>
-      <div class="chart-labels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+      <div class="chart-labels" id="chartLabels"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
     </div>
 
-    <div class="section-title">📋 Cobranças de hoje <span class="badge-count">2 pendentes</span></div>
+    <div class="section-title">📋 Cobranças de hoje <span class="badge-count" id="cobrancasBadge">2 pendentes</span></div>
     <div id="cobrancasHoje">
       <div class="row-item">
         <div class="name-col"><div class="n">João Silva</div><div class="v">R$ 35,00</div></div>
@@ -1856,6 +1875,8 @@ async function entrarComContaReal() {
     show('dashboard');
     registrarAuditoria('🔑 Login admin (conta real)', perfil.full_name);
     document.querySelector('#dashboard .greeting').innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${perfil.full_name}</span>`;
+    carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
+    carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
   } else {
     show('cobrador');
     registrarAuditoria('🔑 Login cobrador (conta real)', perfil.full_name, { publico: 'cobrador' });
@@ -2430,6 +2451,123 @@ async function carregarClientesReais() {
   renderizarClientes();
 }
 
+// [SUPABASE] Popula o Dashboard com dados reais do tenant logado: capital
+// investido (soma de empréstimos ativos), recebido hoje, clientes ativos,
+// inadimplentes, receita do mês e a lista de cobranças de hoje/atrasadas.
+// Antes disso o Dashboard era só HTML estático com números de exemplo.
+async function carregarDashboardReal() {
+  if (!window.supabaseClient) return;
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) return;
+
+  const hoje = new Date();
+  const hojeISO = hoje.toISOString().slice(0, 10);
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
+  const seteDiasAtras = new Date(hoje);
+  seteDiasAtras.setDate(seteDiasAtras.getDate() - 6);
+  seteDiasAtras.setHours(0, 0, 0, 0);
+
+  try {
+    const [clientesAtivos, loansAtivos, pagamentosHoje, pagamentosMes, pagamentos7Dias, parcelasAbertas] = await Promise.all([
+      window.supabaseClient.from('clients').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+      window.supabaseClient.from('loans').select('principal_cents').eq('status', 'active'),
+      window.supabaseClient.from('payments').select('amount_cents').eq('status', 'confirmed').gte('confirmed_at', `${hojeISO}T00:00:00`),
+      window.supabaseClient.from('payments').select('amount_cents').eq('status', 'confirmed').gte('confirmed_at', inicioMes),
+      window.supabaseClient.from('payments').select('amount_cents, confirmed_at').eq('status', 'confirmed').gte('confirmed_at', seteDiasAtras.toISOString()),
+      window.supabaseClient
+        .from('installments')
+        .select('id, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents, loans(client_id, clients(full_name))')
+        .in('status', ['pending', 'partially_paid', 'overdue'])
+        .lte('due_date', hojeISO)
+        .order('due_date', { ascending: true })
+        .limit(10),
+    ]);
+
+    const fmtBRL = (centavos) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    if (!clientesAtivos.error) {
+      const kpi = document.getElementById('kpiClientes');
+      if (kpi) kpi.textContent = clientesAtivos.count ?? 0;
+    }
+
+    if (!loansAtivos.error) {
+      const total = (loansAtivos.data || []).reduce((s, l) => s + (l.principal_cents || 0), 0);
+      const kpi = document.getElementById('kpiCapital');
+      if (kpi) kpi.textContent = fmtBRL(total);
+    }
+
+    if (!pagamentosHoje.error) {
+      const total = (pagamentosHoje.data || []).reduce((s, p) => s + (p.amount_cents || 0), 0);
+      const kpi = document.getElementById('kpiRecebido');
+      if (kpi) kpi.textContent = fmtBRL(total);
+    }
+
+    if (!pagamentosMes.error) {
+      const total = (pagamentosMes.data || []).reduce((s, p) => s + (p.amount_cents || 0), 0);
+      const receita = document.getElementById('receitaMes');
+      if (receita) receita.textContent = fmtBRL(total);
+    }
+
+    if (!pagamentos7Dias.error) {
+      const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const buckets = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(seteDiasAtras);
+        d.setDate(d.getDate() + i);
+        buckets.push({ dataISO: d.toISOString().slice(0, 10), label: diasSemana[d.getDay()], total: 0 });
+      }
+      (pagamentos7Dias.data || []).forEach(p => {
+        const dia = (p.confirmed_at || '').slice(0, 10);
+        const b = buckets.find(x => x.dataISO === dia);
+        if (b) b.total += p.amount_cents || 0;
+      });
+      const maior = Math.max(...buckets.map(b => b.total), 1);
+      const chart = document.getElementById('chartBarras');
+      const labels = document.getElementById('chartLabels');
+      if (chart) {
+        chart.innerHTML = buckets.map((b, idx) => {
+          const alturaPct = Math.max(4, Math.round((b.total / maior) * 100));
+          const ultimo = idx === buckets.length - 1;
+          const estilo = ultimo
+            ? `height:${alturaPct}%;background:linear-gradient(180deg, var(--secondary), rgba(41,182,246,0.3))`
+            : `height:${alturaPct}%`;
+          return `<div class="bar" style="${estilo}"><span class="tooltip">${fmtBRL(b.total)}</span></div>`;
+        }).join('');
+      }
+      if (labels) labels.innerHTML = buckets.map(b => `<span>${b.label}</span>`).join('');
+    }
+
+    // Inadimplentes = clientes distintos com pelo menos 1 parcela vencida (due_date < hoje, não paga)
+    const cobrancas = document.getElementById('cobrancasHoje');
+    const badge = document.getElementById('cobrancasBadge');
+    const kpiInad = document.getElementById('kpiInadimplentes');
+    if (!parcelasAbertas.error) {
+      const itens = parcelasAbertas.data || [];
+      const clientesInadimplentesIds = new Set(
+        itens.filter(i => i.due_date < hojeISO).map(i => i.loans?.client_id).filter(Boolean)
+      );
+      if (kpiInad) kpiInad.textContent = clientesInadimplentesIds.size;
+      if (badge) badge.textContent = `${itens.length} pendentes`;
+      if (cobrancas) {
+        cobrancas.innerHTML = itens.length
+          ? itens.map(i => {
+              const nome = i.loans?.clients?.full_name || 'Cliente';
+              const totalParcela = (i.principal_cents || 0) + (i.interest_cents || 0) + (i.fee_cents || 0) - (i.paid_cents || 0);
+              const atrasado = i.due_date < hojeISO;
+              return `<div class="row-item">
+                <div class="name-col"><div class="n">${nome}</div><div class="v">${fmtBRL(totalParcela)}</div></div>
+                <div class="status-col" style="color:${atrasado ? 'var(--error)' : 'var(--primary)'}">${atrasado ? '⏰ Atrasado' : '📅 Vence hoje'}</div>
+                <div class="action-col"><button class="chip-btn" style="background:${atrasado ? 'var(--error)' : 'var(--primary)'};color:${atrasado ? '#fff' : '#000'}">Ver</button></div>
+              </div>`;
+            }).join('')
+          : '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:12px;">Nenhuma cobrança pendente hoje. 🎉</div>';
+      }
+    }
+  } catch (e) {
+    console.warn('⚠ Falha ao carregar Dashboard real:', e.message);
+  }
+}
+
 function filtrarClientes(valor) {
   const termo = valor.toLowerCase();
   const items = document.querySelectorAll('#listaClientes .client-item');
@@ -2545,12 +2683,20 @@ async function salvarNovoClienteCompleto() {
   usuariosDB.push(novoUsuario);
   usuariosExtras.push(novoUsuario);
 
-  // [SUPABASE] Sincronização best-effort com o banco real (public.clients).
-  // Não bloqueia nem quebra o fluxo local: se o Supabase não estiver configurado
-  // ou a chamada falhar, o cadastro continua funcionando normalmente via localStorage.
-  sincronizarClienteComSupabase({
-    nome, cpfMask, whats, chavePix, endereco, regiao
-  }).catch(e => console.warn('⚠ Cliente salvo localmente, mas falhou ao sincronizar com Supabase:', e.message));
+  // [SUPABASE] Sincronização com o banco real (public.clients). O cadastro
+  // local (localStorage) continua funcionando mesmo se isso falhar, mas
+  // agora o admin é avisado de verdade quando o cliente NÃO chegou no banco
+  // -- antes esse erro era só um console.warn, e o cliente sumia (não
+  // aparecia em Clientes nem no portal dele) sem nenhum aviso na tela.
+  let sincronizouComSupabase = true;
+  let erroSincronizacao = '';
+  try {
+    await sincronizarClienteComSupabase({ nome, cpfMask, whats, chavePix, endereco, regiao });
+  } catch (e) {
+    sincronizouComSupabase = false;
+    erroSincronizacao = e.message;
+    console.warn('⚠ Cliente salvo localmente, mas falhou ao sincronizar com Supabase:', e.message);
+  }
 
   renderizarClientes();
   renderizarRenovacoes();
@@ -2559,10 +2705,17 @@ async function salvarNovoClienteCompleto() {
   registrarAuditoria('Cliente cadastrado', `${nome} - ${cpfMask} 🌟`, { publico: 'admin', assinanteId });
   salvarEstado();
 
+  if (sincronizouComSupabase) {
+    carregarClientesReais().catch(err => console.warn('⚠ Falha ao atualizar clientes reais:', err.message));
+    carregarDashboardReal().catch(err => console.warn('⚠ Falha ao atualizar dashboard real:', err.message));
+  }
+
   const t = document.getElementById('toast');
-  t.textContent = `✅ ${nome} cadastrado com sucesso! Já pode entrar com o CPF. 🌟`;
+  t.textContent = sincronizouComSupabase
+    ? `✅ ${nome} cadastrado com sucesso! Já pode entrar com o CPF. 🌟`
+    : `⚠ ${nome} salvo só localmente -- não sincronizou com o banco real (${erroSincronizacao}). Ele não vai aparecer em Clientes nem no portal dele.`;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  setTimeout(() => t.classList.remove('show'), sincronizouComSupabase ? 3000 : 6000);
 
   document.getElementById('novoNome').value = '';
   document.getElementById('novoCpf').value = '';
@@ -2739,6 +2892,7 @@ async function decidirPropostaExterna(proposalId, decisao) {
   );
   if (decisao === 'approved') {
     carregarClientesReais().catch(e => console.warn('⚠ Falha ao atualizar clientes reais:', e.message));
+    carregarDashboardReal().catch(e => console.warn('⚠ Falha ao atualizar dashboard real:', e.message));
   }
 
   setTimeout(() => {
@@ -3508,6 +3662,7 @@ function init() {
   initClientes();
   renderizarClientes();
   carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
+  carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
   renderizarRenovacoes();
   renderizarLocalizar();
   renderizarHistorico();
