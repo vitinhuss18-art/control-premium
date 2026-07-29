@@ -1,7 +1,42 @@
 # HANDOFF.md - Control Premium
 
-Ultima atualizacao: 26/07/2026. Este arquivo deve ser lido primeiro por qualquer IA ou
+Ultima atualizacao: 29/07/2026. Este arquivo deve ser lido primeiro por qualquer IA ou
 desenvolvedor que assuma o projeto sem contexto previo da conversa.
+
+## 0. Sessao 29/07/2026 -- resumo do que foi corrigido
+
+Victor reportou 3 telas com problema (prints): Dashboard com dado de exemplo falso,
+aba Clientes vazia mesmo com cliente cadastrado, e portal do cliente sem o emprestimo
+mesmo com a proposta aprovada. As 3 causas eram diferentes:
+
+1. Aprovar proposta agora ja cria o emprestimo junto (commit df59688) -- antes
+   decide_client_proposal() so criava o cliente, e criar o emprestimo era um passo
+   manual separado em "Venda Parcelada". Victor considerou isso um erro de design
+   (a proposta ja tem valor/frequencia/parcelas/juros, nao devia precisar de tela
+   separada). 1o vencimento agora e calculado automatico a partir de hoje conforme
+   a frequencia (diario +1d, semanal +7d, quinzenal +14d, mensal +30d) -- sem campo
+   pro admin preencher, dinheiro sai hoje e a partir dai comeca o prazo.
+2. Dashboard era 100% HTML estatico (commit 59ff36e) -- os KPIs e "Cobrancas de
+   hoje" nunca foram ligados ao Supabase. Criada carregarDashboardReal() que busca
+   capital investido, recebido hoje, clientes ativos, inadimplentes, receita do mes
+   e grafico de 7 dias reais. Chamada no login admin, no init() e apos aprovar
+   proposta.
+3. Cliente cadastrado manualmente (aba Cadastrar) sumia (commit 59ff36e) -- causa
+   raiz: sincronizarClienteComSupabase() nao mandava tenant_id no insert, a RLS
+   rejeitava silenciosamente (so um console.warn), cliente ficava so no
+   localStorage. Corrigido pra buscar o tenant_id real antes do insert, e agora
+   avisa o admin na tela se a sincronizacao falhar (antes sempre dizia "sucesso").
+
+IMPORTANTE: essas correcoes foram feitas e testadas so com `node --check` (sintaxe).
+Ainda NAO foram validadas clicando de verdade no site publicado contra o banco real
+-- proxima sessao deveria comecar validando isso (aprovar uma proposta nova e
+conferir se o emprestimo aparece no portal do cliente e no Dashboard).
+
+Nota tecnica: eu (Claude) nao tenho push direto no GitHub por padrao (acesso
+read-only via connector). Victor gerou um Personal Access Token pontual pra eu
+conseguir commitar e dar push nesta sessao. Se a proxima sessao precisar subir
+codigo, provavelmente vai precisar pedir um token novo (o gerado nesta sessao pode
+ja ter expirado, ele configurou validade curta).
 
 ## 1. O que e este projeto
 
