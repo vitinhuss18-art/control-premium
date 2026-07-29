@@ -31,6 +31,43 @@ function maskPhone(value: string): string {
   return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5)}`;
 }
 
+// A Vercel tem um limite fixo de ~4.5 MB por requisição em funções
+// serverless (não dá pra configurar, nem em plano pago). Fotos tiradas
+// direto da câmera do celular (RG, casa, selfie) facilmente passam disso
+// sem compressão -- por isso comprimimos no navegador antes de enviar.
+async function compressImage(
+  file: File,
+  maxDimension = 1600,
+  quality = 0.72,
+): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    if (width > maxDimension || height > maxDimension) {
+      const scale = maxDimension / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality),
+    );
+    if (!blob) return file;
+    const newName = file.name.replace(/\.\w+$/, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    // se a compressão falhar por qualquer motivo (formato exótico, etc.),
+    // segue com o arquivo original -- o check de tamanho abaixo ainda protege.
+    return file;
+  }
+}
+
 function maskCurrency(value: string): string {
   const d = value.replace(/\D/g, "");
   if (!d) return "";
@@ -72,19 +109,28 @@ export default function CadastroPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function onPhoto(key: PhotoKey, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
+  async function onPhoto(
+    key: PhotoKey,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const input = e.target;
+    const file = input.files?.[0] ?? null;
     if (!file) {
       setPhotos((prev) => ({ ...prev, [key]: EMPTY_PHOTO }));
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Cada foto deve ter no máximo 10 MB.");
-      e.target.value = "";
+    const compressed = await compressImage(file);
+    // limite por foto pensado pra 4 fotos + campos de texto caberem dentro
+    // do limite de ~4.5 MB por requisição da Vercel (ver compressImage acima)
+    if (compressed.size > 3 * 1024 * 1024) {
+      setError(
+        "Essa foto ficou grande demais mesmo após compressão. Tente tirar outra com menos zoom/qualidade.",
+      );
+      input.value = "";
       return;
     }
-    const preview = URL.createObjectURL(file);
-    setPhotos((prev) => ({ ...prev, [key]: { file, preview } }));
+    const preview = URL.createObjectURL(compressed);
+    setPhotos((prev) => ({ ...prev, [key]: { file: compressed, preview } }));
   }
 
   function validate(): string | null {

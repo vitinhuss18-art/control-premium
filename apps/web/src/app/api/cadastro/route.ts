@@ -64,8 +64,8 @@ export async function POST(req: Request) {
     if (!(file instanceof File) || file.size === 0) {
       return badRequest("Envie todas as 4 fotos obrigatórias.");
     }
-    if (file.size > 10 * 1024 * 1024) {
-      return badRequest("Cada foto deve ter no máximo 10 MB.");
+    if (file.size > 3 * 1024 * 1024) {
+      return badRequest("Cada foto deve ter no máximo 3 MB.");
     }
     photos[key] = file;
   }
