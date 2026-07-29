@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   const { data: loans, error } = await service
     .from("loans")
     .select(
-      "id, status, principal_cents, created_at, installments(sequence_number, due_date, total_cents, paid_cents, status)",
+      "id, status, principal_cents, created_at, installments!installments_loan_id_fkey(sequence_number, due_date, total_cents, paid_cents, status)",
     )
     .eq("tenant_id", session.tenantId)
     .eq("client_id", session.clientId)
