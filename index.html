@@ -1428,6 +1428,7 @@ let auditoriaLog = [];          // agora cada item tem {publico, assinanteId, cl
 let perfilAtual = null;
 let usuarioAtual = null;
 let clientesDB = [];
+let clientesReaisDB = []; // clientes reais vindos do Supabase (tabela public.clients), separados do mock local
 let cobradoresDB = [];
 let localizacoesDB = {};
 let solicitacoesLocalizacao = {};
@@ -2318,7 +2319,7 @@ function renderizarClientes() {
   const lista = document.getElementById('listaClientes');
   if (!lista) return;
   const meusClientes = clientesDoAssinante();
-  lista.innerHTML = meusClientes.map(c => {
+  const mockHtml = meusClientes.map(c => {
     const { score } = calcularScore(c.historico);
     const risco = classificarRisco(score);
     const ultimo = c.historico.length > 0 ? c.historico[c.historico.length - 1] : null;
@@ -2335,8 +2336,47 @@ function renderizarClientes() {
       <span style="font-size:10px;font-weight:700;color:${cor};">${situacao}</span>
     </div>`;
   }).join('');
+  // Clientes reais (Supabase) ainda não têm histórico de pagamento pra calcular
+  // score/risco como os de demo — por isso mostram um selo simples de status.
+  const statusLabel = {
+    approved: '✅ Aprovado',
+    pending: '⏳ Pendente',
+    rejected: '❌ Recusado',
+  };
+  const reaisHtml = clientesReaisDB.map(c => {
+    const iniciais = (c.full_name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    const situacao = statusLabel[c.status] || c.status || '';
+    return `<div class="client-item">
+      <div class="avatar">${iniciais}</div>
+      <div class="info">
+        <div class="n">${c.full_name}</div>
+        <div class="s">${c.phone || ''}</div>
+      </div>
+      <span class="badge" style="background:rgba(255,215,0,0.15);color:var(--primary);">Real</span>
+      <span style="font-size:10px;font-weight:700;">${situacao}</span>
+    </div>`;
+  }).join('');
+  lista.innerHTML = reaisHtml + mockHtml;
   const kpi = document.getElementById('kpiClientes');
-  if (kpi) kpi.textContent = meusClientes.length;
+  if (kpi) kpi.textContent = meusClientes.length + clientesReaisDB.length;
+}
+
+// [SUPABASE] Busca os clientes reais (public.clients) do tenant logado e
+// atualiza a lista na aba Clientes junto com os fictícios de demo.
+async function carregarClientesReais() {
+  if (!window.supabaseClient) return;
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao.session) return;
+  const { data, error } = await window.supabaseClient
+    .from('clients')
+    .select('id, full_name, phone, status, created_at')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('⚠ Falha ao carregar clientes reais do Supabase:', error.message);
+    return;
+  }
+  clientesReaisDB = data || [];
+  renderizarClientes();
 }
 
 function filtrarClientes(valor) {
@@ -2596,6 +2636,9 @@ async function decidirPropostaExterna(proposalId, decisao) {
     registro.full_name,
     { publico: 'admin', assinanteId: assinanteAtualId() }
   );
+  if (decisao === 'approved') {
+    carregarClientesReais().catch(e => console.warn('⚠ Falha ao atualizar clientes reais:', e.message));
+  }
 
   setTimeout(() => {
     const card = document.getElementById(`propostaExterna_${proposalId}`);
@@ -3363,6 +3406,7 @@ function init() {
   carregarEstado();
   initClientes();
   renderizarClientes();
+  carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
   renderizarRenovacoes();
   renderizarLocalizar();
   renderizarHistorico();
