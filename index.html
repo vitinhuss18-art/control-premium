@@ -1436,6 +1436,7 @@ let perfilAtual = null;
 let usuarioAtual = null;
 let clientesDB = [];
 let clientesReaisDB = []; // clientes reais vindos do Supabase (tabela public.clients), separados do mock local
+let propostasExternasCache = {}; // ultimas propostas carregadas (client_proposals), por id, pra reusar loan_amount_cents ao aprovar
 let cobradoresDB = [];
 let localizacoesDB = {};
 let solicitacoesLocalizacao = {};
@@ -2614,6 +2615,9 @@ async function carregarPropostasExternas() {
     return;
   }
 
+  propostasExternasCache = {};
+  propostas.forEach(p => { propostasExternasCache[p.id] = p; });
+
   alvo.innerHTML = `<div style="color:var(--primary);font-size:12px;font-weight:700;margin-bottom:10px;">📥 Propostas recebidas pelo link (${propostas.length})</div>` +
     propostas.map(p => `
       <div class="card" id="propostaExterna_${p.id}">
@@ -2643,6 +2647,16 @@ async function carregarPropostasExternas() {
     `).join('');
 }
 
+// Calcula a data do 1º vencimento a partir de hoje (dia em que o dinheiro sai),
+// de acordo com a frequência escolhida. O cliente recebe o dinheiro e já tem
+// esse prazo pra pagar a 1ª parcela -- não é um campo que o admin preenche.
+function calcularPrimeiroVencimento(frequency) {
+  const dias = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 }[frequency] || 30;
+  const data = new Date();
+  data.setDate(data.getDate() + dias);
+  return data.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
 async function decidirPropostaExterna(proposalId, decisao) {
   const params = { p_proposal_id: proposalId, p_decision: decisao };
   if (decisao === 'approved') {
@@ -2664,7 +2678,40 @@ async function decidirPropostaExterna(proposalId, decisao) {
   const numeroDigits = (registro.whatsapp || '').replace(/\D/g, '');
   const phoneLast4 = numeroDigits.slice(-4);
   let mensagem;
+  let avisoEmprestimo = '';
   if (decisao === 'approved') {
+    // Aprovar a proposta so cria o cliente (decide_client_proposal). O
+    // emprestimo em si e criado aqui em seguida, reusando o valor solicitado
+    // (loan_amount_cents) que ja veio na proposta -- nao precisa de tela
+    // separada de "Venda Parcelada" pra isso.
+    const propostaOriginal = propostasExternasCache[proposalId];
+    try {
+      const { data: sessao } = await window.supabaseClient.auth.getSession();
+      const token = sessao?.session?.access_token;
+      if (!token || !propostaOriginal) {
+        throw new Error('Sessão ou dados da proposta não encontrados');
+      }
+      const resp = await fetch('/api/admin/loans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          clientId: registro.client_id,
+          operationType: 'loan',
+          frequency: params.p_frequency,
+          installmentCount: params.p_installment_count,
+          periodicInterestBps: params.p_periodic_interest_bps,
+          firstDueDate: calcularPrimeiroVencimento(params.p_frequency),
+          principalCents: propostaOriginal.loan_amount_cents,
+        }),
+      });
+      const loanResult = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(loanResult.message || 'Falha ao criar o empréstimo');
+      }
+    } catch (e) {
+      avisoEmprestimo = `<div style="color:var(--error);font-size:11px;margin-top:6px;">⚠ Cliente aprovado, mas o empréstimo não foi criado: ${e.message}. Crie manualmente em Venda Parcelada.</div>`;
+    }
+
     const linkApp = window.location.origin;
     mensagem = `🎉 ${registro.full_name}, sua proposta foi aprovada!\n\nSeja bem-vindo(a) ao Control$ Premium. Acesse pelo link abaixo e entre com seu CPF e os 4 últimos dígitos do seu WhatsApp (${phoneLast4}):\n${linkApp}`;
   } else {
@@ -2675,10 +2722,14 @@ async function decidirPropostaExterna(proposalId, decisao) {
   }
 
   const linkWhats = `https://wa.me/55${numeroDigits}?text=${encodeURIComponent(mensagem)}`;
+  const tituloResultado = decisao === 'approved'
+    ? (avisoEmprestimo ? '✅ Cliente criado.' : '✅ Cliente e empréstimo criados com sucesso.')
+    : '❌ Proposta recusada.';
   resultado.innerHTML = `
     <div style="background:rgba(255,215,0,0.08);border-radius:10px;padding:10px;margin-top:10px;font-size:11px;">
-      ${decisao === 'approved' ? '✅ Cliente criado com sucesso.' : '❌ Proposta recusada.'} Envie o resultado pelo WhatsApp:
+      ${tituloResultado} Envie o resultado pelo WhatsApp:
       <a href="${linkWhats}" target="_blank" class="btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;">📤 Abrir WhatsApp</a>
+      ${avisoEmprestimo}
     </div>`;
 
   registrarAuditoria(
