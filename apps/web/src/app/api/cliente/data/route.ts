@@ -56,6 +56,12 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("cliente/data loans query failed:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
     return NextResponse.json(
       { message: "Não foi possível carregar seus dados agora." },
       { status: 500 },
