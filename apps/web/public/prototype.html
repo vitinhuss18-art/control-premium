@@ -2364,7 +2364,7 @@ async function abrirDetalheClienteReal(clientId) {
   const fmtData = (iso) => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
   const [clienteResp, loansResp] = await Promise.all([
-    window.supabaseClient.from('clients').select('id, full_name, phone, cpf, status, created_at').eq('id', clientId).maybeSingle(),
+    window.supabaseClient.from('clients').select('id, full_name, phone, cpf, email, birth_date, status, created_at, metadata').eq('id', clientId).maybeSingle(),
     window.supabaseClient
       .from('loans')
       .select('id, principal_cents, status, operation_type, created_at, installments!installments_loan_id_fkey(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
@@ -2406,9 +2406,16 @@ async function abrirDetalheClienteReal(clientId) {
     }).join('');
   }
 
+  const md = c.metadata || {};
   conteudo.innerHTML = `
     <div><b>CPF:</b> ${c.cpf || '—'}</div>
     <div><b>WhatsApp:</b> ${c.phone || '—'}</div>
+    <div><b>E-mail:</b> ${c.email || '—'}</div>
+    <div><b>Data de nascimento:</b> ${fmtData(c.birth_date)}</div>
+    <div><b>Endereço:</b> ${md.endereco || '—'}</div>
+    <div><b>Região:</b> ${md.regiao || '—'}</div>
+    <div><b>Chave PIX:</b> ${md.chave_pix || '—'}</div>
+    <div><b>Instagram:</b> ${md.instagram || '—'}</div>
     <div><b>Status:</b> ${statusLabel[c.status] || c.status || '—'}</div>
     <div><b>Cadastrado em:</b> ${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</div>
     <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Empréstimos</div>
