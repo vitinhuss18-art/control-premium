@@ -3429,18 +3429,40 @@ function solicitarLocalizacao(id) {
 }
 
 // [FRONT-END/FILTRO] Tela do cobrador: mostra só Nome, CPF e Região — sem WhatsApp — e só clientes
-// que estão devendo (capital > 0). Clientes em dia não aparecem na rota do cobrador.
-function renderizarRotaCobrador() {
+// que estão devendo de verdade (parcela vencida e não paga no Supabase).
+async function renderizarRotaCobrador() {
   const lista = document.getElementById('listaRotaCobrador');
   if (!lista) return;
-  const devedores = clientesDoAssinante().filter(c => c.capital > 0);
+  if (!window.supabaseClient) return;
+
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const { data, error } = await window.supabaseClient
+    .from('installments')
+    .select('due_date, status, loans!installments_loan_id_fkey(client_id, clients(full_name, cpf, phone, metadata))')
+    .in('status', ['pending', 'partially_paid', 'overdue'])
+    .lt('due_date', hojeISO);
+
+  if (error) {
+    lista.innerHTML = `<div style="color:var(--error);font-size:11px;padding:16px 0;text-align:center;">⚠ Erro ao buscar devedores: ${error.message}</div>`;
+    return;
+  }
+
+  const porCliente = {};
+  (data || []).forEach(i => {
+    const c = i.loans?.clients;
+    const clientId = i.loans?.client_id;
+    if (!c || !clientId || porCliente[clientId]) return;
+    porCliente[clientId] = c;
+  });
+  const devedores = Object.values(porCliente);
+
   lista.innerHTML = devedores.length === 0
     ? '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">✅ Nenhum cliente devendo hoje.</div>'
     : devedores.map(c => `
       <div class="agenda-item">
         <div class="dot2" style="background:var(--error)"></div>
-        <div class="info"><div class="n">${c.nome}</div><div class="s">${c.doc} · ${c.regiao || 'Região não informada'}</div></div>
-        <button class="btn-ir" onclick="abrirRota('${c.nome}','${c.endereco}')">Ir ▸</button>
+        <div class="info"><div class="n">${c.full_name}</div><div class="s">${c.cpf || ''} · ${c.metadata?.regiao || 'Região não informada'}</div></div>
+        <button class="btn-ir" onclick="abrirRota('${(c.full_name || '').replace(/'/g, "\\'")}','${(c.metadata?.endereco || '').replace(/'/g, "\\'")}')">Ir ▸</button>
       </div>
     `).join('');
   const contagem = document.getElementById('cobradorContagem');
