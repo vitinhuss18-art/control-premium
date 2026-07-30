@@ -3513,48 +3513,74 @@ function perguntar(texto) {
 // INICIALIZAÇÃO
 // ============================================================
 function init() {
-  carregarEstado();
-  initClientes();
-  renderizarClientes();
-  renderizarRenovacoes();
-  renderizarLocalizar();
-  renderizarHistorico();
-  renderizarCobradores();
-  clienteAtualizarUI();
-  atualizarDashboard();
-  renderizarSelectClienteContrato();
-  atualizarBotaoLoginRapido();
-  criarParticulas();
-  atualizarNomesAdmin();
-  salvarEstado();
-
   const splash = document.getElementById('splash');
-  setTimeout(() => {
+  // FAILSAFE: não importa o que aconteça no resto do init() (erro de rede,
+  // exceção em qualquer renderXxx(), etc.) -- a splash tem que sumir depois
+  // de no máximo 4s. Antes, um erro em qualquer lugar do init() travava a
+  // tela pra sempre na splash, sem nenhum aviso.
+  let splashJaEscondida = false;
+  const esconderSplash = () => {
+    if (splashJaEscondida || !splash) return;
+    splashJaEscondida = true;
     splash.classList.add('splash-fadeout');
+  };
+  setTimeout(esconderSplash, 4000);
+
+  try {
+    carregarEstado();
+    initClientes();
+    renderizarClientes();
+    renderizarRenovacoes();
+    renderizarLocalizar();
+    renderizarHistorico();
+    renderizarCobradores();
+    clienteAtualizarUI();
+    atualizarDashboard();
+    renderizarSelectClienteContrato();
+    atualizarBotaoLoginRapido();
+    criarParticulas();
+    atualizarNomesAdmin();
+    salvarEstado();
+  } catch (e) {
+    console.error('⚠ Erro durante a inicialização do app:', e);
+  }
+
+  setTimeout(() => {
+    esconderSplash();
     setTimeout(async () => {
-      const auth = window.__cpAuthCheck ? await window.__cpAuthCheck : null;
-      const papeisComPainel = ['super_admin', 'admin', 'manager'];
-      if (auth && auth.session && auth.profile && papeisComPainel.includes(auth.profile.role)) {
-        // Sessão real do Supabase (veio do login novo /assinante) — pula a
-        // tela de CPF+WhatsApp e entra direto no dashboard.
-        perfilAtual = 'admin';
-        usuarioAtual = {
-          nome: auth.profile.full_name || auth.session.user.email,
-          perfil: 'admin',
-          assinanteId: auth.profile.tenant_id || 'demo1',
-          real: true,
-          email: auth.session.user.email
-        };
-        montarMenu();
-        show('dashboard');
-        registrarAuditoria('🔑 Login assinante (Supabase)', auth.session.user.email);
-        const greeting = document.querySelector('#dashboard .greeting');
-        if (greeting) {
-          greeting.innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${usuarioAtual.nome}</span>`;
+      let auth = null;
+      try {
+        auth = window.__cpAuthCheck ? await window.__cpAuthCheck : null;
+      } catch (e) {
+        console.error('⚠ Erro ao verificar sessão/perfil do assinante:', e);
+      }
+      try {
+        const papeisComPainel = ['super_admin', 'admin', 'manager'];
+        if (auth && auth.session && auth.profile && papeisComPainel.includes(auth.profile.role)) {
+          // Sessão real do Supabase (veio do login novo /assinante) — pula a
+          // tela de CPF+WhatsApp e entra direto no dashboard.
+          perfilAtual = 'admin';
+          usuarioAtual = {
+            nome: auth.profile.full_name || auth.session.user.email,
+            perfil: 'admin',
+            assinanteId: auth.profile.tenant_id || 'demo1',
+            real: true,
+            email: auth.session.user.email
+          };
+          montarMenu();
+          show('dashboard');
+          registrarAuditoria('🔑 Login assinante (Supabase)', auth.session.user.email);
+          const greeting = document.querySelector('#dashboard .greeting');
+          if (greeting) {
+            greeting.innerHTML = `Bem-vindo, <span class="admin-name-display" id="adminNameDisplay">${usuarioAtual.nome}</span>`;
+          }
+          carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
+          carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
+        } else {
+          show('login');
         }
-        carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
-        carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
-      } else {
+      } catch (e) {
+        console.error('⚠ Erro ao decidir tela pós-login, indo pra tela de login:', e);
         show('login');
       }
     }, 480);
