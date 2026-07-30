@@ -1802,9 +1802,86 @@ async function tentarLoginClienteReal(cpf, phoneLast4) {
   if (areaConteudo) {
     areaConteudo.style.display = 'block';
     areaConteudo.innerHTML = `<div class="card"><div style="color:var(--primary);font-size:13px;font-weight:700;margin-bottom:6px;">Status da sua conta</div><div style="font-size:12px;color:var(--grey2);">${statusLabel}</div></div>`;
+    carregarEmprestimoCliente(cliente.client_id, cpf, phoneLast4, areaConteudo);
   }
 
   return true;
+}
+
+// [SUPABASE] Busca o empréstimo/parcelas reais do cliente (via RPC segura,
+// já que o login do cliente não cria sessão do Supabase Auth) e monta o
+// "dashboard" dele: valor do empréstimo, parcelas com vencimento/status, e
+// um botão pra falar com o assinante sobre pagamento (ainda não existe
+// gateway de pagamento real conectado, ver HANDOFF).
+async function carregarEmprestimoCliente(clientId, cpf, phoneLast4, areaConteudo) {
+  if (!window.supabaseClient) return;
+  const { data, error } = await window.supabaseClient.rpc('client_loan_summary', {
+    p_client_id: clientId,
+    p_cpf: cpf,
+    p_phone_last4: phoneLast4,
+  });
+
+  const fmtBRL = (centavos) => ((centavos || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmtData = (iso) => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+
+  if (error) {
+    areaConteudo.insertAdjacentHTML('beforeend', `<div class="card" style="color:var(--error);">⚠ Não foi possível carregar seu empréstimo: ${error.message}</div>`);
+    return;
+  }
+  if (!data || data.length === 0) {
+    areaConteudo.insertAdjacentHTML('beforeend', `<div class="card" style="color:var(--grey2);font-size:12px;">Você ainda não tem nenhum empréstimo cadastrado por aqui.</div>`);
+    return;
+  }
+
+  // Agrupa as linhas (1 por parcela) por empréstimo.
+  const emprestimosMap = {};
+  data.forEach(row => {
+    if (!emprestimosMap[row.loan_id]) {
+      emprestimosMap[row.loan_id] = {
+        operationType: row.operation_type,
+        principalCents: row.loan_principal_cents,
+        status: row.loan_status,
+        tenantNome: row.tenant_display_name,
+        tenantWhats: row.tenant_whatsapp,
+        parcelas: [],
+      };
+    }
+    if (row.installment_id) {
+      emprestimosMap[row.loan_id].parcelas.push(row);
+    }
+  });
+
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const statusParcelaLabel = { pending: '⏳ Pendente', paid: '✅ Pago', partially_paid: '🟡 Parcial', overdue: '⏰ Atrasado', cancelled: '❌ Cancelado' };
+
+  const html = Object.values(emprestimosMap).map(l => {
+    const totalComJuros = l.parcelas.reduce((s, p) => s + (p.principal_cents || 0) + (p.interest_cents || 0) + (p.fee_cents || 0), 0);
+    const linhas = l.parcelas
+      .sort((a, b) => a.sequence_number - b.sequence_number)
+      .map(p => {
+        const valor = (p.principal_cents || 0) + (p.interest_cents || 0) + (p.fee_cents || 0);
+        const atrasado = p.due_date < hojeISO && p.installment_status !== 'paid';
+        const label = atrasado ? '⏰ Atrasado' : (statusParcelaLabel[p.installment_status] || p.installment_status);
+        return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px;">
+          <span>Parcela ${p.sequence_number} — vence ${fmtData(p.due_date)}</span>
+          <span style="color:${atrasado ? 'var(--error)' : 'var(--grey2)'};font-weight:700;">${fmtBRL(valor)} · ${label}</span>
+        </div>`;
+      }).join('');
+
+    const whatsLink = l.tenantWhats
+      ? `https://wa.me/55${l.tenantWhats.replace(/\D/g, '')}?text=${encodeURIComponent('Oi! Quero avisar/combinar o pagamento do meu empréstimo.')}`
+      : null;
+
+    return `<div class="card card-glow" style="margin-top:12px;">
+      <div style="color:var(--primary);font-size:13px;font-weight:700;">${l.operationType === 'installment_sale' ? '🛍️ Sua venda parcelada' : '💰 Seu empréstimo'}</div>
+      <div style="font-size:20px;font-weight:800;margin:6px 0;">${fmtBRL(totalComJuros)}</div>
+      <div style="font-size:11px;color:var(--grey2);margin-bottom:8px;">Valor liberado: ${fmtBRL(l.principalCents)}</div>
+      <div>${linhas || '<span style="color:var(--grey2);font-size:12px;">Sem parcelas geradas ainda.</span>'}</div>
+      ${whatsLink ? `<a href="${whatsLink}" target="_blank" class="btn-primary" style="display:block;text-align:center;margin-top:12px;text-decoration:none;">💬 Falar sobre pagamento</a>` : ''}
+    </div>`;
+  }).join('');
+
+  areaConteudo.insertAdjacentHTML('beforeend', html);
 }
 
 function ultimoLoginRapido() {
