@@ -2206,9 +2206,51 @@ function renderizarClientes() {
 }
 
 
-// [SUPABASE] Busca os clientes reais (public.clients) do tenant logado e
-// atualiza a lista na aba Clientes.
-async function carregarClientesReais() {
+async function criarEmprestimoManual(clientId) {
+  const resultado = document.getElementById(`manualEmprestimoResultado_${clientId}`);
+  const valor = parseNumeroBR(document.getElementById(`manualValor_${clientId}`).value);
+  const parcelas = parseInt(document.getElementById(`manualParcelas_${clientId}`).value, 10);
+  const jurosPercent = parseFloat(document.getElementById(`manualJuros_${clientId}`).value);
+  const frequency = document.getElementById(`manualFreq_${clientId}`).value;
+
+  if (!valor || valor <= 0 || !parcelas || parcelas <= 0 || isNaN(jurosPercent) || jurosPercent < 0) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ Preencha valor, parcelas e juros corretamente.</div>`;
+    return;
+  }
+
+  resultado.innerHTML = `<div style="color:var(--grey2);font-size:11px;">Criando empréstimo...</div>`;
+
+  try {
+    const { data: sessao } = await window.supabaseClient.auth.getSession();
+    const token = sessao?.session?.access_token;
+    if (!token) throw new Error('Sessão expirada. Saia e entre de novo com sua conta de admin.');
+
+    const resp = await fetch('/api/admin/loans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        clientId,
+        operationType: 'loan',
+        frequency,
+        installmentCount: parcelas,
+        periodicInterestBps: Math.round(jurosPercent * 100),
+        firstDueDate: calcularPrimeiroVencimento(frequency),
+        principalCents: Math.round(valor * 100),
+      }),
+    });
+    const loanResult = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(loanResult.message || 'Falha ao criar o empréstimo');
+
+    resultado.innerHTML = `<div style="color:var(--primary);font-size:11px;">✅ Empréstimo criado com sucesso!</div>`;
+    registrarAuditoria('Empréstimo criado manualmente', `Cliente ${clientId} - ${fmtMoney(valor)}`, { publico: 'admin', assinanteId: assinanteAtualId() });
+    setTimeout(() => abrirDetalheClienteReal(clientId), 1200);
+    carregarDashboardReal().catch(() => {});
+  } catch (e) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ ${e.message}</div>`;
+  }
+}
+
+
   if (!window.supabaseClient) return;
   const { data: sessao } = await window.supabaseClient.auth.getSession();
   if (!sessao.session) return;
@@ -2385,7 +2427,27 @@ async function abrirDetalheClienteReal(clientId) {
   if (loansResp.error) {
     htmlEmprestimos = `<div style="color:var(--error);margin-top:10px;">⚠ Erro ao buscar empréstimos: ${loansResp.error.message}</div>`;
   } else if (!loansResp.data || loansResp.data.length === 0) {
-    htmlEmprestimos = `<div style="color:var(--grey2);margin-top:10px;">Nenhum empréstimo encontrado pra esse cliente ainda. Se você já aprovou uma proposta pra ele, o empréstimo pode não ter sido criado — confira o aviso que apareceu na hora de aprovar.</div>`;
+    const mostrarForm = c.status === 'approved';
+    htmlEmprestimos = `<div style="color:var(--grey2);margin-top:10px;">Nenhum empréstimo encontrado pra esse cliente ainda.</div>` +
+      (mostrarForm ? `
+      <div class="card" style="margin-top:10px;background:rgba(255,215,0,0.06);">
+        <div style="font-weight:700;color:var(--primary);font-size:12px;margin-bottom:8px;">💰 Criar empréstimo manualmente</div>
+        <div class="form-group"><label>Valor (R$)</label><input id="manualValor_${c.id}" placeholder="Ex: 1000" type="number" step="0.01"></div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;"><label>Parcelas</label><input id="manualParcelas_${c.id}" type="number" min="1" value="4"></div>
+          <div class="form-group" style="flex:1;"><label>Juros por parcela (%)</label><input id="manualJuros_${c.id}" type="number" min="0" step="0.1" value="20"></div>
+        </div>
+        <div class="form-group"><label>Frequência</label>
+          <select id="manualFreq_${c.id}">
+            <option value="daily">Diário</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <button class="btn-primary" style="width:100%;" onclick="criarEmprestimoManual('${c.id}')">Criar empréstimo</button>
+        <div id="manualEmprestimoResultado_${c.id}" style="margin-top:8px;"></div>
+      </div>` : '');
   } else {
     htmlEmprestimos = loansResp.data.map(l => {
       const parcelas = (l.installments || []).sort((a, b) => a.sequence_number - b.sequence_number);
