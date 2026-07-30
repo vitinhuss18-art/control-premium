@@ -52,6 +52,19 @@ arquivos acima e corrigir no arquivo certo):
 5. BONUS encontrado no meio do caminho: __cpAuthCheck() (o "pular tela de CPF e ir
    direto pro dashboard" quando ja veio logado real) setava `assinanteId: 'demo1'`
    HARDCODED no codigo, porque nem buscava tenant_id do profile. Corrigido.
+6. Clicar num cliente na aba Clientes agora abre um sheet com CPF, WhatsApp, status
+   e os emprestimos/parcelas dele (abrirDetalheClienteReal). Antes o card nao era
+   clicavel -- nenhuma forma de ver os dados cadastrados.
+7. Painel do cliente (depois do login por CPF) mostrava so um texto de status
+   generico -- nunca teve dashboard, valor do emprestimo nem parcelas de verdade.
+   Causa: client_login_by_cpf() nao cria sessao real do Supabase Auth, entao
+   qualquer select direto em loans/installments rodava como "anon" e a RLS
+   bloqueava tudo. Corrigido com uma RPC nova (client_loan_summary, migration
+   202607290001, JA APLICADA no Supabase pelo Victor) que revalida CPF+telefone e
+   devolve emprestimo+parcelas+contato do assinante sem precisar de sessao real.
+   Painel do cliente agora mostra valor total, parcelas com vencimento/status, e
+   botao "Falar sobre pagamento" (abre WhatsApp do assinante -- ainda nao existe
+   gateway de pagamento real conectado).
 
 IMPORTANTE: essas correcoes foram testadas so com `node --check` (sintaxe). Ainda
 NAO foram validadas clicando de verdade no site publicado contra o banco real --
