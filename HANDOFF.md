@@ -27,6 +27,23 @@ nos dois, ou -- melhor -- perguntar ao Victor se da pra simplesmente apagar
 
 ## 0. Sessao 29/07/2026 -- resumo do que foi corrigido
 
+NOTA: durante essa sessao, uma OUTRA sessao (provavelmente Claude Code, rodando
+em paralelo) tambem estava editando apps/web/public/prototype.html ao mesmo
+tempo. Os commits dela (c23668b, 3bc597d, 3512328, f45c375, aec318e) corrigiram
+coisas relacionadas: FK do embed de installments, mais dados no modal de
+detalhe do cliente, reload de KPIs reais ao trocar de aba, rota do cobrador com
+dados reais, e criacao manual de emprestimo no modal (fallback pra quando a
+criacao automatica falha). Foi preciso dar `git merge` pra integrar com o
+failsafe de splash desta sessao (commit 0c4738a) -- o merge automatico do git
+apagou por engano a linha de declaracao de `carregarClientesReais()` (corrigido
+manualmente antes do push). SE ISSO ACONTECER DE NOVO: depois de qualquer
+merge, SEMPRE rodar o `node --check` (ver secao de validacao mais abaixo) antes
+de dar push -- foi assim que esse bug do merge foi pego.
+
+Se o Victor estiver rodando duas sessoes de IA em paralelo no mesmo repo
+(ex: esta conversa + Claude Code), vale avisar ele que isso pode causar esse
+tipo de conflito, e perguntar se prefere rodar só uma por vez daqui pra frente.
+
 Victor reportou 3 telas com problema (prints): Dashboard com dado de exemplo falso,
 aba Clientes vazia mesmo com cliente cadastrado, e portal do cliente sem o emprestimo
 mesmo com a proposta aprovada. Causas (depois de descobrir o problema dos dois
