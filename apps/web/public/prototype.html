@@ -1720,7 +1720,7 @@ function show(id) {
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   const nav = document.getElementById('bottomNav');
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
-  if (id === 'dashboard') atualizarDashboard();
+  if (id === 'dashboard') { atualizarDashboard(); carregarDashboardReal().catch(e => console.warn('⚠ Falha ao recarregar dashboard real:', e.message)); }
   if (id === 'contratos') renderizarSelectClienteContrato();
   if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') preencherFormAssinante();
