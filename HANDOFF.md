@@ -3,34 +3,61 @@
 Ultima atualizacao: 29/07/2026. Este arquivo deve ser lido primeiro por qualquer IA ou
 desenvolvedor que assuma o projeto sem contexto previo da conversa.
 
+## ⚠️ ALERTA CRITICO -- qual arquivo HTML editar
+
+Existem DOIS arquivos HTML de admin no repo e eles NAO sao sincronizados
+automaticamente:
+
+- `index.html` (raiz do repo) -- NAO e usado em producao. Foi o prototipo
+  original, mas o Vercel nao serve ele. Editar isso e trabalho perdido.
+- `apps/web/public/prototype.html` -- ESTE e o que roda de verdade. A rota
+  `/painel` faz rewrite pra `/prototype.html` (ver `apps/web/next.config.ts`).
+
+Na sessao de 29/07/2026, tres commits inteiros (df59688, 59ff36e e boa parte
+do trabalho de sessoes anteriores tambem) foram feitos so no `index.html` e
+NUNCA chegaram em producao -- isso causou horas de "correção" que não
+apareciam pro Victor. So foi descoberto comparando `git log --oneline -- <arquivo>`
+dos dois arquivos separadamente e vendo que divergiam ha varios commits.
+
+REGRA A PARTIR DE AGORA: qualquer mudanca no painel admin vai SEMPRE em
+`apps/web/public/prototype.html`. Se por algum motivo `index.html` precisar
+ser tocado (ex: alguem ainda usa ele localmente), replicar a mudanca manualmente
+nos dois, ou -- melhor -- perguntar ao Victor se da pra simplesmente apagar
+`index.html` da raiz pra eliminar essa fonte de bug de vez.
+
 ## 0. Sessao 29/07/2026 -- resumo do que foi corrigido
 
 Victor reportou 3 telas com problema (prints): Dashboard com dado de exemplo falso,
 aba Clientes vazia mesmo com cliente cadastrado, e portal do cliente sem o emprestimo
-mesmo com a proposta aprovada. As 3 causas eram diferentes:
+mesmo com a proposta aprovada. Causas (depois de descobrir o problema dos dois
+arquivos acima e corrigir no arquivo certo):
 
-1. Aprovar proposta agora ja cria o emprestimo junto (commit df59688) -- antes
-   decide_client_proposal() so criava o cliente, e criar o emprestimo era um passo
-   manual separado em "Venda Parcelada". Victor considerou isso um erro de design
-   (a proposta ja tem valor/frequencia/parcelas/juros, nao devia precisar de tela
-   separada). 1o vencimento agora e calculado automatico a partir de hoje conforme
-   a frequencia (diario +1d, semanal +7d, quinzenal +14d, mensal +30d) -- sem campo
-   pro admin preencher, dinheiro sai hoje e a partir dai comeca o prazo.
-2. Dashboard era 100% HTML estatico (commit 59ff36e) -- os KPIs e "Cobrancas de
-   hoje" nunca foram ligados ao Supabase. Criada carregarDashboardReal() que busca
-   capital investido, recebido hoje, clientes ativos, inadimplentes, receita do mes
-   e grafico de 7 dias reais. Chamada no login admin, no init() e apos aprovar
-   proposta.
-3. Cliente cadastrado manualmente (aba Cadastrar) sumia (commit 59ff36e) -- causa
-   raiz: sincronizarClienteComSupabase() nao mandava tenant_id no insert, a RLS
-   rejeitava silenciosamente (so um console.warn), cliente ficava so no
-   localStorage. Corrigido pra buscar o tenant_id real antes do insert, e agora
-   avisa o admin na tela se a sincronizacao falhar (antes sempre dizia "sucesso").
+1. Aprovar proposta agora ja cria o emprestimo junto -- antes decide_client_proposal()
+   so criava o cliente, e criar o emprestimo era um passo manual separado em "Venda
+   Parcelada". 1o vencimento calculado automatico a partir de hoje conforme a
+   frequencia (diario +1d, semanal +7d, quinzenal +14d, mensal +30d) -- sem campo pro
+   admin preencher, dinheiro sai hoje e a partir dai comeca o prazo.
+2. Dashboard (`prototype.html`) era 100% HTML estatico -- os KPIs e "Cobrancas de
+   hoje" nunca tinham sido ligados ao Supabase. Criada carregarDashboardReal() que
+   busca capital investido, recebido hoje, clientes ativos, inadimplentes, receita do
+   mes e grafico de 7 dias reais. Chamada no login admin (nos dois caminhos de login:
+   __cpAuthCheck/init() E entrarComSupabase()) e apos aprovar proposta.
+3. Aba Clientes ficava vazia -- renderizarClientes() no prototype.html era a versao
+   antiga que nunca existiu conectada ao Supabase (so mock local via
+   clientesDoAssinante()). Criada carregarClientesReais().
+4. Cliente cadastrado manualmente (aba Cadastrar) sumia -- causa raiz:
+   sincronizarClienteComSupabase() nao mandava tenant_id no insert, a RLS rejeitava
+   silenciosamente. Corrigido pra buscar o tenant_id real antes do insert, e agora
+   avisa o admin na tela se a sincronizacao falhar.
+5. BONUS encontrado no meio do caminho: __cpAuthCheck() (o "pular tela de CPF e ir
+   direto pro dashboard" quando ja veio logado real) setava `assinanteId: 'demo1'`
+   HARDCODED no codigo, porque nem buscava tenant_id do profile. Corrigido.
 
-IMPORTANTE: essas correcoes foram feitas e testadas so com `node --check` (sintaxe).
-Ainda NAO foram validadas clicando de verdade no site publicado contra o banco real
--- proxima sessao deveria comecar validando isso (aprovar uma proposta nova e
-conferir se o emprestimo aparece no portal do cliente e no Dashboard).
+IMPORTANTE: essas correcoes foram testadas so com `node --check` (sintaxe). Ainda
+NAO foram validadas clicando de verdade no site publicado contra o banco real --
+proxima sessao (ou o proprio Victor) deveria comecar validando isso: aprovar uma
+proposta nova e conferir se o emprestimo aparece no portal do cliente e no Dashboard,
+depois do deploy do Vercel terminar (commit 1226166).
 
 Nota tecnica: eu (Claude) nao tenho push direto no GitHub por padrao (acesso
 read-only via connector). Victor gerou um Personal Access Token pontual pra eu
