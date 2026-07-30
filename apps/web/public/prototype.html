@@ -1720,7 +1720,7 @@ function show(id) {
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   const nav = document.getElementById('bottomNav');
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
-  if (id === 'dashboard') atualizarDashboard();
+  if (id === 'dashboard') { atualizarDashboard(); carregarDashboardReal().catch(e => console.warn('⚠ Falha ao recarregar dashboard real:', e.message)); }
   if (id === 'contratos') renderizarSelectClienteContrato();
   if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') preencherFormAssinante();
@@ -2206,6 +2206,51 @@ function renderizarClientes() {
 }
 
 
+async function criarEmprestimoManual(clientId) {
+  const resultado = document.getElementById(`manualEmprestimoResultado_${clientId}`);
+  const valor = parseNumeroBR(document.getElementById(`manualValor_${clientId}`).value);
+  const parcelas = parseInt(document.getElementById(`manualParcelas_${clientId}`).value, 10);
+  const jurosPercent = parseFloat(document.getElementById(`manualJuros_${clientId}`).value);
+  const frequency = document.getElementById(`manualFreq_${clientId}`).value;
+
+  if (!valor || valor <= 0 || !parcelas || parcelas <= 0 || isNaN(jurosPercent) || jurosPercent < 0) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ Preencha valor, parcelas e juros corretamente.</div>`;
+    return;
+  }
+
+  resultado.innerHTML = `<div style="color:var(--grey2);font-size:11px;">Criando empréstimo...</div>`;
+
+  try {
+    const { data: sessao } = await window.supabaseClient.auth.getSession();
+    const token = sessao?.session?.access_token;
+    if (!token) throw new Error('Sessão expirada. Saia e entre de novo com sua conta de admin.');
+
+    const resp = await fetch('/api/admin/loans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        clientId,
+        operationType: 'loan',
+        frequency,
+        installmentCount: parcelas,
+        periodicInterestBps: Math.round(jurosPercent * 100),
+        firstDueDate: calcularPrimeiroVencimento(frequency),
+        principalCents: Math.round(valor * 100),
+      }),
+    });
+    const loanResult = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(loanResult.message || 'Falha ao criar o empréstimo');
+
+    resultado.innerHTML = `<div style="color:var(--primary);font-size:11px;">✅ Empréstimo criado com sucesso!</div>`;
+    registrarAuditoria('Empréstimo criado manualmente', `Cliente ${clientId} - ${fmtMoney(valor)}`, { publico: 'admin', assinanteId: assinanteAtualId() });
+    setTimeout(() => abrirDetalheClienteReal(clientId), 1200);
+    carregarDashboardReal().catch(() => {});
+  } catch (e) {
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ ${e.message}</div>`;
+  }
+}
+
+
 // [SUPABASE] Busca os clientes reais (public.clients) do tenant logado e
 // atualiza a lista na aba Clientes.
 async function carregarClientesReais() {
@@ -2364,10 +2409,10 @@ async function abrirDetalheClienteReal(clientId) {
   const fmtData = (iso) => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
   const [clienteResp, loansResp] = await Promise.all([
-    window.supabaseClient.from('clients').select('id, full_name, phone, cpf, status, created_at').eq('id', clientId).maybeSingle(),
+    window.supabaseClient.from('clients').select('id, full_name, phone, cpf, email, birth_date, status, created_at, metadata').eq('id', clientId).maybeSingle(),
     window.supabaseClient
       .from('loans')
-      .select('id, principal_cents, status, operation_type, created_at, installments(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
+      .select('id, principal_cents, status, operation_type, created_at, installments!installments_loan_id_fkey(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false }),
   ]);
@@ -2385,7 +2430,27 @@ async function abrirDetalheClienteReal(clientId) {
   if (loansResp.error) {
     htmlEmprestimos = `<div style="color:var(--error);margin-top:10px;">⚠ Erro ao buscar empréstimos: ${loansResp.error.message}</div>`;
   } else if (!loansResp.data || loansResp.data.length === 0) {
-    htmlEmprestimos = `<div style="color:var(--grey2);margin-top:10px;">Nenhum empréstimo encontrado pra esse cliente ainda. Se você já aprovou uma proposta pra ele, o empréstimo pode não ter sido criado — confira o aviso que apareceu na hora de aprovar.</div>`;
+    const mostrarForm = c.status === 'approved';
+    htmlEmprestimos = `<div style="color:var(--grey2);margin-top:10px;">Nenhum empréstimo encontrado pra esse cliente ainda.</div>` +
+      (mostrarForm ? `
+      <div class="card" style="margin-top:10px;background:rgba(255,215,0,0.06);">
+        <div style="font-weight:700;color:var(--primary);font-size:12px;margin-bottom:8px;">💰 Criar empréstimo manualmente</div>
+        <div class="form-group"><label>Valor (R$)</label><input id="manualValor_${c.id}" placeholder="Ex: 1000" type="number" step="0.01"></div>
+        <div style="display:flex;gap:8px;">
+          <div class="form-group" style="flex:1;"><label>Parcelas</label><input id="manualParcelas_${c.id}" type="number" min="1" value="4"></div>
+          <div class="form-group" style="flex:1;"><label>Juros por parcela (%)</label><input id="manualJuros_${c.id}" type="number" min="0" step="0.1" value="20"></div>
+        </div>
+        <div class="form-group"><label>Frequência</label>
+          <select id="manualFreq_${c.id}">
+            <option value="daily">Diário</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <button class="btn-primary" style="width:100%;" onclick="criarEmprestimoManual('${c.id}')">Criar empréstimo</button>
+        <div id="manualEmprestimoResultado_${c.id}" style="margin-top:8px;"></div>
+      </div>` : '');
   } else {
     htmlEmprestimos = loansResp.data.map(l => {
       const parcelas = (l.installments || []).sort((a, b) => a.sequence_number - b.sequence_number);
@@ -2406,9 +2471,16 @@ async function abrirDetalheClienteReal(clientId) {
     }).join('');
   }
 
+  const md = c.metadata || {};
   conteudo.innerHTML = `
     <div><b>CPF:</b> ${c.cpf || '—'}</div>
     <div><b>WhatsApp:</b> ${c.phone || '—'}</div>
+    <div><b>E-mail:</b> ${c.email || '—'}</div>
+    <div><b>Data de nascimento:</b> ${fmtData(c.birth_date)}</div>
+    <div><b>Endereço:</b> ${md.endereco || '—'}</div>
+    <div><b>Região:</b> ${md.regiao || '—'}</div>
+    <div><b>Chave PIX:</b> ${md.chave_pix || '—'}</div>
+    <div><b>Instagram:</b> ${md.instagram || '—'}</div>
     <div><b>Status:</b> ${statusLabel[c.status] || c.status || '—'}</div>
     <div><b>Cadastrado em:</b> ${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</div>
     <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Empréstimos</div>
@@ -3422,18 +3494,40 @@ function solicitarLocalizacao(id) {
 }
 
 // [FRONT-END/FILTRO] Tela do cobrador: mostra só Nome, CPF e Região — sem WhatsApp — e só clientes
-// que estão devendo (capital > 0). Clientes em dia não aparecem na rota do cobrador.
-function renderizarRotaCobrador() {
+// que estão devendo de verdade (parcela vencida e não paga no Supabase).
+async function renderizarRotaCobrador() {
   const lista = document.getElementById('listaRotaCobrador');
   if (!lista) return;
-  const devedores = clientesDoAssinante().filter(c => c.capital > 0);
+  if (!window.supabaseClient) return;
+
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const { data, error } = await window.supabaseClient
+    .from('installments')
+    .select('due_date, status, loans!installments_loan_id_fkey(client_id, clients(full_name, cpf, phone, metadata))')
+    .in('status', ['pending', 'partially_paid', 'overdue'])
+    .lt('due_date', hojeISO);
+
+  if (error) {
+    lista.innerHTML = `<div style="color:var(--error);font-size:11px;padding:16px 0;text-align:center;">⚠ Erro ao buscar devedores: ${error.message}</div>`;
+    return;
+  }
+
+  const porCliente = {};
+  (data || []).forEach(i => {
+    const c = i.loans?.clients;
+    const clientId = i.loans?.client_id;
+    if (!c || !clientId || porCliente[clientId]) return;
+    porCliente[clientId] = c;
+  });
+  const devedores = Object.values(porCliente);
+
   lista.innerHTML = devedores.length === 0
     ? '<div style="color:var(--grey2);font-size:11px;padding:16px 0;text-align:center;">✅ Nenhum cliente devendo hoje.</div>'
     : devedores.map(c => `
       <div class="agenda-item">
         <div class="dot2" style="background:var(--error)"></div>
-        <div class="info"><div class="n">${c.nome}</div><div class="s">${c.doc} · ${c.regiao || 'Região não informada'}</div></div>
-        <button class="btn-ir" onclick="abrirRota('${c.nome}','${c.endereco}')">Ir ▸</button>
+        <div class="info"><div class="n">${c.full_name}</div><div class="s">${c.cpf || ''} · ${c.metadata?.regiao || 'Região não informada'}</div></div>
+        <button class="btn-ir" onclick="abrirRota('${(c.full_name || '').replace(/'/g, "\\'")}','${(c.metadata?.endereco || '').replace(/'/g, "\\'")}')">Ir ▸</button>
       </div>
     `).join('');
   const contagem = document.getElementById('cobradorContagem');
