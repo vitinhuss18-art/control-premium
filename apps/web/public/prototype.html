@@ -2367,7 +2367,7 @@ async function abrirDetalheClienteReal(clientId) {
     window.supabaseClient.from('clients').select('id, full_name, phone, cpf, status, created_at').eq('id', clientId).maybeSingle(),
     window.supabaseClient
       .from('loans')
-      .select('id, principal_cents, status, operation_type, created_at, installments(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
+      .select('id, principal_cents, status, operation_type, created_at, installments!installments_loan_id_fkey(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false }),
   ]);
