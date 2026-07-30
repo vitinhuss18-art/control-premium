@@ -1386,6 +1386,15 @@
       <button class="sheet-cancelar" onclick="fecharDetalheNotificacao()">Fechar</button>
     </div>
   </div>
+
+  <!-- DETALHE DO CLIENTE REAL (Supabase) -->
+  <div class="sheet-overlay" id="clienteDetalheOverlay" onclick="fecharDetalheClienteReal(event)">
+    <div class="sheet" onclick="event.stopPropagation()" style="max-height:80vh;overflow-y:auto;">
+      <div class="titulo" id="clienteDetalheTitulo">—</div>
+      <div id="clienteDetalheConteudo" style="text-align:left;font-size:12.5px;color:var(--grey);line-height:1.6;margin:12px 0 18px;">Carregando...</div>
+      <button class="sheet-cancelar" onclick="fecharDetalheClienteReal()">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2104,7 +2113,7 @@ function renderizarClientes() {
   const reaisHtml = clientesReaisDB.map(c => {
     const iniciais = (c.full_name || '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
     const situacao = statusLabel[c.status] || c.status || '';
-    return `<div class="client-item">
+    return `<div class="client-item" style="cursor:pointer;" onclick="abrirDetalheClienteReal('${c.id}')">
       <div class="avatar">${iniciais}</div>
       <div class="info">
         <div class="n">${c.full_name}</div>
@@ -2181,6 +2190,10 @@ async function carregarDashboardReal() {
       const total = (loansAtivos.data || []).reduce((s, l) => s + (l.principal_cents || 0), 0);
       const kpi = document.getElementById('kpiCapital');
       if (kpi) kpi.textContent = fmtBRL(total);
+    } else {
+      const kpi = document.getElementById('kpiCapital');
+      if (kpi) kpi.textContent = '⚠ Erro';
+      console.warn('⚠ Falha ao buscar empréstimos ativos:', loansAtivos.error.message);
     }
 
     if (!pagamentosHoje.error) {
@@ -2253,6 +2266,82 @@ async function carregarDashboardReal() {
   } catch (e) {
     console.warn('⚠ Falha ao carregar Dashboard real:', e.message);
   }
+}
+
+// [SUPABASE] Abre o detalhe de um cliente real: dados cadastrais + empréstimos
+// e parcelas dele. Isso também ajuda a diagnosticar na hora se um empréstimo
+// foi criado de verdade depois de aprovar uma proposta.
+async function abrirDetalheClienteReal(clientId) {
+  const overlay = document.getElementById('clienteDetalheOverlay');
+  const titulo = document.getElementById('clienteDetalheTitulo');
+  const conteudo = document.getElementById('clienteDetalheConteudo');
+  const cliente = clientesReaisDB.find(c => c.id === clientId);
+
+  titulo.textContent = cliente ? `👤 ${cliente.full_name}` : 'Detalhe do cliente';
+  conteudo.innerHTML = 'Carregando...';
+  overlay.classList.add('show');
+
+  if (!window.supabaseClient) return;
+
+  const fmtBRL = (centavos) => ((centavos || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmtData = (iso) => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+
+  const [clienteResp, loansResp] = await Promise.all([
+    window.supabaseClient.from('clients').select('id, full_name, phone, cpf, status, created_at').eq('id', clientId).maybeSingle(),
+    window.supabaseClient
+      .from('loans')
+      .select('id, principal_cents, status, operation_type, created_at, installments(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  if (clienteResp.error || !clienteResp.data) {
+    conteudo.innerHTML = `<div style="color:var(--error);">⚠ Não foi possível carregar os dados: ${clienteResp.error?.message || 'cliente não encontrado'}</div>`;
+    return;
+  }
+
+  const c = clienteResp.data;
+  const statusLabel = { approved: '✅ Aprovado', pending: '⏳ Pendente', rejected: '❌ Recusado' };
+  titulo.textContent = `👤 ${c.full_name}`;
+
+  let htmlEmprestimos;
+  if (loansResp.error) {
+    htmlEmprestimos = `<div style="color:var(--error);margin-top:10px;">⚠ Erro ao buscar empréstimos: ${loansResp.error.message}</div>`;
+  } else if (!loansResp.data || loansResp.data.length === 0) {
+    htmlEmprestimos = `<div style="color:var(--grey2);margin-top:10px;">Nenhum empréstimo encontrado pra esse cliente ainda. Se você já aprovou uma proposta pra ele, o empréstimo pode não ter sido criado — confira o aviso que apareceu na hora de aprovar.</div>`;
+  } else {
+    htmlEmprestimos = loansResp.data.map(l => {
+      const parcelas = (l.installments || []).sort((a, b) => a.sequence_number - b.sequence_number);
+      const totalParcelas = parcelas.reduce((s, p) => s + (p.principal_cents || 0) + (p.interest_cents || 0) + (p.fee_cents || 0), 0);
+      const linhasParcelas = parcelas.map(p => {
+        const valor = (p.principal_cents || 0) + (p.interest_cents || 0) + (p.fee_cents || 0);
+        const statusParcela = { pending: '⏳', paid: '✅', partially_paid: '🟡', overdue: '⏰', cancelled: '❌' }[p.status] || p.status;
+        return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span>${statusParcela} Parcela ${p.sequence_number} — ${fmtData(p.due_date)}</span>
+          <span>${fmtBRL(valor)}</span>
+        </div>`;
+      }).join('');
+      return `<div style="background:rgba(255,215,0,0.06);border-radius:10px;padding:10px;margin-top:10px;">
+        <div style="font-weight:700;color:var(--primary);">${l.operation_type === 'installment_sale' ? '🛍️ Venda parcelada' : '💰 Empréstimo'} — ${l.status}</div>
+        <div style="font-size:11px;margin:4px 0;">Principal: ${fmtBRL(l.principal_cents)} · Total com juros: ${fmtBRL(totalParcelas)}</div>
+        <div style="margin-top:6px;">${linhasParcelas || '<span style="color:var(--grey2);">Sem parcelas.</span>'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  conteudo.innerHTML = `
+    <div><b>CPF:</b> ${c.cpf || '—'}</div>
+    <div><b>WhatsApp:</b> ${c.phone || '—'}</div>
+    <div><b>Status:</b> ${statusLabel[c.status] || c.status || '—'}</div>
+    <div><b>Cadastrado em:</b> ${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</div>
+    <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Empréstimos</div>
+    ${htmlEmprestimos}
+  `;
+}
+
+function fecharDetalheClienteReal(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('clienteDetalheOverlay').classList.remove('show');
 }
 
 function filtrarClientes(valor) {
