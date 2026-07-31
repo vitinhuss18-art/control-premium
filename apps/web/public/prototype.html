@@ -2511,6 +2511,7 @@ async function abrirDetalheClienteReal(clientId) {
         <div style="font-weight:700;color:var(--primary);">${l.operation_type === 'installment_sale' ? '🛍️ Venda parcelada' : '💰 Empréstimo'} — ${l.status}</div>
         <div style="font-size:11px;margin:4px 0;">Principal: ${fmtBRL(l.principal_cents)} · Total com juros: ${fmtBRL(totalParcelas)}</div>
         <div style="margin-top:6px;">${linhasParcelas || '<span style="color:var(--grey2);">Sem parcelas.</span>'}</div>
+        ${l.status === 'active' ? `<button class="btn-secondary" style="width:100%;margin-top:8px;background:var(--error);color:#fff;border:none;font-size:11px;" onclick="cancelarEmprestimoReal('${l.id}','${clientId}')">🗑️ Cancelar empréstimo (dados errados)</button>` : ''}
       </div>`;
     }).join('');
   }
@@ -2536,6 +2537,23 @@ async function abrirDetalheClienteReal(clientId) {
 function fecharDetalheClienteReal(e) {
   if (e) e.stopPropagation();
   document.getElementById('clienteDetalheOverlay').classList.remove('show');
+}
+
+// [SUPABASE] Cancela um empréstimo criado com dados errados (ex: juros
+// configurados errado por engano). Não apaga nada -- a RPC cancel_loan só
+// marca como cancelled, preservando histórico. Depois de cancelar, reabre
+// o modal do cliente pra já poder criar o empréstimo certo.
+async function cancelarEmprestimoReal(loanId, clientId) {
+  if (!confirm('Cancelar esse empréstimo? As parcelas ainda não pagas serão marcadas como canceladas. Isso não pode ser desfeito por aqui.')) return;
+  try {
+    const { error } = await window.supabaseClient.rpc('cancel_loan', { p_loan_id: loanId });
+    if (error) throw error;
+    registrarAuditoria('Empréstimo cancelado', `Loan ${loanId}`, { publico: 'admin', assinanteId: assinanteAtualId() });
+    carregarDashboardReal().catch(e => console.warn('⚠ Falha ao atualizar dashboard real:', e.message));
+    abrirDetalheClienteReal(clientId);
+  } catch (e) {
+    alert('Não foi possível cancelar: ' + e.message);
+  }
 }
 
 function filtrarClientes(valor) {

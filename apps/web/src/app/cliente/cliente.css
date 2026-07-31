@@ -164,3 +164,37 @@
   background: rgba(255, 82, 82, 0.12);
   color: #ff5252;
 }
+
+.installment-row__status--pay {
+  background: rgba(255, 215, 0, 0.14);
+  color: #ffd700;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.installment-row__status--pay:hover {
+  background: rgba(255, 215, 0, 0.24);
+}
+
+.installment-row__status--pay.installment-row__status--overdue {
+  background: rgba(255, 82, 82, 0.16);
+  color: #ff5252;
+}
+
+.client-portal__pay-button {
+  display: block;
+  text-align: center;
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  color: #050607;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  text-decoration: none;
+}
+
+.client-portal__pay-button:hover {
+  filter: brightness(1.05);
+}

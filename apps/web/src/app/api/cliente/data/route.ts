@@ -105,9 +105,17 @@ export async function GET(request: Request) {
     };
   });
 
+  const { data: tenant } = await service
+    .from("tenants")
+    .select("display_name, whatsapp_business_number")
+    .eq("id", session.tenantId)
+    .maybeSingle();
+
   return NextResponse.json({
     fullName: session.fullName,
     status: session.status,
     loans: shaped,
+    tenantName: tenant?.display_name ?? null,
+    tenantWhatsapp: tenant?.whatsapp_business_number ?? null,
   });
 }
