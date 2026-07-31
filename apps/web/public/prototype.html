@@ -2206,17 +2206,56 @@ function renderizarClientes() {
 }
 
 
+// Mesma prévia ao vivo da calculadora de propostas, mas pro modal de criar
+// empréstimo manual (valor digitado na hora, não vem de uma proposta).
+function calcularPreviewManual(clientId) {
+  const preview = document.getElementById(`manualPreview_${clientId}`);
+  if (!preview) return;
+  const valor = parseFloat(document.getElementById(`manualValor_${clientId}`).value) || 0;
+  const parcelas = Math.max(1, parseInt(document.getElementById(`manualParcelas_${clientId}`).value, 10) || 1);
+  const jurosModo = document.getElementById(`manualJurosModo_${clientId}`).value;
+  const jurosPercent = parseFloat(document.getElementById(`manualJuros_${clientId}`).value) || 0;
+
+  const principalCents = Math.round(valor * 100);
+  const taxaPorParcela = jurosModo === 'total' ? jurosPercent / parcelas : jurosPercent;
+  const periodicInterestBps = Math.round(taxaPorParcela * 100);
+
+  if (periodicInterestBps < 0 || periodicInterestBps > 10000) {
+    preview.innerHTML = `<span style="color:var(--error);">⚠ Taxa fora do limite permitido (0% a 100% por parcela).</span>`;
+    return;
+  }
+
+  const interestCents = Math.round(principalCents * periodicInterestBps * parcelas / 10000);
+  const totalCents = principalCents + interestCents;
+  const valorParcela = totalCents / parcelas;
+  const taxaEfetivaTotal = (periodicInterestBps / 100) * parcelas;
+
+  preview.innerHTML = `
+    <div style="display:flex;justify-content:space-between;"><span>Total com juros:</span><b style="color:var(--primary);">${fmtMoney(totalCents / 100)}</b></div>
+    <div style="display:flex;justify-content:space-between;"><span>${parcelas}x de:</span><b>${fmtMoney(valorParcela / 100)}</b></div>
+    <div style="display:flex;justify-content:space-between;color:var(--grey2);font-size:11px;margin-top:4px;"><span>Juros total do contrato:</span><span>${taxaEfetivaTotal.toFixed(1)}% (${(periodicInterestBps / 100).toFixed(2)}% por parcela)</span></div>
+    ${jurosModo === 'parcela' && taxaEfetivaTotal >= 100 ? '<div style="color:var(--error);margin-top:6px;">⚠ Juros por parcela alto demais pra essa quantidade de parcelas -- confira se não era pra usar "% total do contrato".</div>' : ''}
+  `;
+}
+
+
 async function criarEmprestimoManual(clientId) {
   const resultado = document.getElementById(`manualEmprestimoResultado_${clientId}`);
   const valor = parseNumeroBR(document.getElementById(`manualValor_${clientId}`).value);
   const parcelas = parseInt(document.getElementById(`manualParcelas_${clientId}`).value, 10);
   const jurosPercent = parseFloat(document.getElementById(`manualJuros_${clientId}`).value);
+  const jurosModo = document.getElementById(`manualJurosModo_${clientId}`).value;
   const frequency = document.getElementById(`manualFreq_${clientId}`).value;
 
   if (!valor || valor <= 0 || !parcelas || parcelas <= 0 || isNaN(jurosPercent) || jurosPercent < 0) {
     resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ Preencha valor, parcelas e juros corretamente.</div>`;
     return;
   }
+
+  // Se a modalidade é "% total do contrato", divide pelas parcelas pra achar
+  // a taxa periódica -- mesma lógica da calculadora de propostas.
+  const taxaPorParcela = jurosModo === 'total' ? jurosPercent / parcelas : jurosPercent;
+  const periodicInterestBps = Math.round(taxaPorParcela * 100);
 
   resultado.innerHTML = `<div style="color:var(--grey2);font-size:11px;">Criando empréstimo...</div>`;
 
@@ -2233,7 +2272,7 @@ async function criarEmprestimoManual(clientId) {
         operationType: 'loan',
         frequency,
         installmentCount: parcelas,
-        periodicInterestBps: Math.round(jurosPercent * 100),
+        periodicInterestBps,
         firstDueDate: calcularPrimeiroVencimento(frequency),
         principalCents: Math.round(valor * 100),
       }),
@@ -2435,19 +2474,24 @@ async function abrirDetalheClienteReal(clientId) {
       (mostrarForm ? `
       <div class="card" style="margin-top:10px;background:rgba(255,215,0,0.06);">
         <div style="font-weight:700;color:var(--primary);font-size:12px;margin-bottom:8px;">💰 Criar empréstimo manualmente</div>
-        <div class="form-group"><label>Valor (R$)</label><input id="manualValor_${c.id}" placeholder="Ex: 1000" type="number" step="0.01"></div>
-        <div style="display:flex;gap:8px;">
-          <div class="form-group" style="flex:1;"><label>Parcelas</label><input id="manualParcelas_${c.id}" type="number" min="1" value="4"></div>
-          <div class="form-group" style="flex:1;"><label>Juros por parcela (%)</label><input id="manualJuros_${c.id}" type="number" min="0" step="0.1" value="20"></div>
-        </div>
-        <div class="form-group"><label>Frequência</label>
-          <select id="manualFreq_${c.id}">
+        <div class="form-group"><label>Valor (R$)</label><input id="manualValor_${c.id}" placeholder="Ex: 1000" type="number" step="0.01" oninput="calcularPreviewManual('${c.id}')"></div>
+        <div class="form-group"><label>Frequência das parcelas</label>
+          <select id="manualFreq_${c.id}" onchange="calcularPreviewManual('${c.id}')">
             <option value="daily">Diário</option>
             <option value="weekly">Semanal</option>
             <option value="biweekly">Quinzenal</option>
             <option value="monthly" selected>Mensal</option>
           </select>
         </div>
+        <div class="form-group"><label>Quantidade de parcelas</label><input id="manualParcelas_${c.id}" type="number" min="1" max="360" value="4" oninput="calcularPreviewManual('${c.id}')"></div>
+        <div class="form-group"><label>Modalidade de juros</label>
+          <select id="manualJurosModo_${c.id}" onchange="calcularPreviewManual('${c.id}')">
+            <option value="total" selected>% total do contrato (recomendado)</option>
+            <option value="parcela">% por parcela (aplicado em cada uma)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Taxa de juros (%)</label><input id="manualJuros_${c.id}" type="number" min="0" step="0.1" value="20" oninput="calcularPreviewManual('${c.id}')"></div>
+        <div id="manualPreview_${c.id}" style="background:rgba(255,215,0,0.08);border-radius:10px;padding:10px;margin:8px 0;font-size:12px;"></div>
         <button class="btn-primary" style="width:100%;" onclick="criarEmprestimoManual('${c.id}')">Criar empréstimo</button>
         <div id="manualEmprestimoResultado_${c.id}" style="margin-top:8px;"></div>
       </div>` : '');
@@ -2486,6 +2530,7 @@ async function abrirDetalheClienteReal(clientId) {
     <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Empréstimos</div>
     ${htmlEmprestimos}
   `;
+  if (document.getElementById(`manualPreview_${c.id}`)) calcularPreviewManual(c.id);
 }
 
 function fecharDetalheClienteReal(e) {
@@ -2704,18 +2749,23 @@ async function carregarPropostasExternas() {
           <div class="info"><div class="n">${p.full_name}</div><div class="s">CPF: ${p.cpf} · WhatsApp: ${p.whatsapp}</div></div>
         </div>
         <div style="font-size:11px;color:var(--grey2);margin-bottom:10px;">Valor solicitado: <b style="color:var(--primary);">${fmtMoney((p.loan_amount_cents || 0) / 100)}</b></div>
-        <div class="form-group"><label>Frequência</label>
-          <select id="propFreq_${p.id}">
+        <div class="form-group"><label>Frequência das parcelas</label>
+          <select id="propFreq_${p.id}" onchange="calcularPreviewProposta('${p.id}')">
             <option value="daily">Diário</option>
             <option value="weekly">Semanal</option>
             <option value="biweekly">Quinzenal</option>
             <option value="monthly" selected>Mensal</option>
           </select>
         </div>
-        <div style="display:flex;gap:8px;">
-          <div class="form-group" style="flex:1;"><label>Parcelas</label><input id="propParcelas_${p.id}" type="number" min="1" value="4"></div>
-          <div class="form-group" style="flex:1;"><label>Juros por parcela (%)</label><input id="propJuros_${p.id}" type="number" min="0" step="0.1" value="20"></div>
+        <div class="form-group"><label>Quantidade de parcelas</label><input id="propParcelas_${p.id}" type="number" min="1" max="360" value="4" oninput="calcularPreviewProposta('${p.id}')"></div>
+        <div class="form-group"><label>Modalidade de juros</label>
+          <select id="propJurosModo_${p.id}" onchange="calcularPreviewProposta('${p.id}')">
+            <option value="total" selected>% total do contrato (recomendado)</option>
+            <option value="parcela">% por parcela (aplicado em cada uma)</option>
+          </select>
         </div>
+        <div class="form-group"><label>Taxa de juros (%)</label><input id="propJuros_${p.id}" type="number" min="0" step="0.1" value="20" oninput="calcularPreviewProposta('${p.id}')"></div>
+        <div id="propPreview_${p.id}" style="background:rgba(255,215,0,0.08);border-radius:10px;padding:10px;margin:8px 0;font-size:12px;"></div>
         <div style="display:flex;gap:8px;">
           <button class="btn-secondary" style="flex:1;background:var(--error);color:#fff;border:none;" onclick="decidirPropostaExterna('${p.id}','rejected')">❌ Recusar</button>
           <button class="btn-primary" style="flex:1;" onclick="decidirPropostaExterna('${p.id}','approved')">✅ Aprovar</button>
@@ -2723,6 +2773,53 @@ async function carregarPropostasExternas() {
         <div id="propostaResultado_${p.id}"></div>
       </div>
     `).join('');
+
+  propostas.forEach(p => calcularPreviewProposta(p.id));
+}
+
+// Lê os campos da modalidade de juros e devolve o periodicInterestBps que vai
+// pra RPC/API -- é o único lugar que sabe converter "modalidade" (total do
+// contrato vs por parcela) pra taxa periódica que o motor de cálculo entende.
+function lerConfigJurosProposta(proposalId) {
+  const frequency = document.getElementById(`propFreq_${proposalId}`).value;
+  const installmentCount = Math.max(1, parseInt(document.getElementById(`propParcelas_${proposalId}`).value, 10) || 1);
+  const modo = document.getElementById(`propJurosModo_${proposalId}`).value;
+  const taxaDigitada = parseFloat(document.getElementById(`propJuros_${proposalId}`).value) || 0;
+  // Se a modalidade é "% total do contrato", a taxa periódica é a taxa total
+  // dividida pelas parcelas (juros simples fixo, mesma lógica de sempre --
+  // ver packages/domain/src/proposal.ts). Se é "% por parcela", usa direto.
+  const taxaPorParcela = modo === 'total' ? taxaDigitada / installmentCount : taxaDigitada;
+  const periodicInterestBps = Math.round(taxaPorParcela * 100);
+  return { frequency, installmentCount, modo, taxaDigitada, periodicInterestBps };
+}
+
+// Mostra ao vivo o total com juros e o valor de cada parcela ANTES de
+// aprovar -- antes disso o admin só descobria o valor final depois de já
+// ter aprovado (e um default perigoso de 20% "por parcela" já causou um
+// empréstimo de R$1.000 virar R$5.000 de tão alto que ficou).
+function calcularPreviewProposta(proposalId) {
+  const preview = document.getElementById(`propPreview_${proposalId}`);
+  if (!preview) return;
+  const proposta = propostasExternasCache[proposalId];
+  const principalCents = proposta ? proposta.loan_amount_cents : 0;
+  const { installmentCount, modo, taxaDigitada, periodicInterestBps } = lerConfigJurosProposta(proposalId);
+
+  if (periodicInterestBps < 0 || periodicInterestBps > 10000) {
+    preview.innerHTML = `<span style="color:var(--error);">⚠ Taxa fora do limite permitido (0% a 100% por parcela).</span>`;
+    return;
+  }
+
+  const interestCents = Math.round(principalCents * periodicInterestBps * installmentCount / 10000);
+  const totalCents = principalCents + interestCents;
+  const valorParcela = totalCents / installmentCount;
+  const taxaEfetivaTotal = installmentCount > 0 ? (periodicInterestBps / 100) * installmentCount : 0;
+
+  preview.innerHTML = `
+    <div style="display:flex;justify-content:space-between;"><span>Total com juros:</span><b style="color:var(--primary);">${fmtMoney(totalCents / 100)}</b></div>
+    <div style="display:flex;justify-content:space-between;"><span>${installmentCount}x de:</span><b>${fmtMoney(valorParcela / 100)}</b></div>
+    <div style="display:flex;justify-content:space-between;color:var(--grey2);font-size:11px;margin-top:4px;"><span>Juros total do contrato:</span><span>${taxaEfetivaTotal.toFixed(1)}% (${(periodicInterestBps / 100).toFixed(2)}% por parcela)</span></div>
+    ${modo === 'parcela' && taxaEfetivaTotal >= 100 ? '<div style="color:var(--error);margin-top:6px;">⚠ Juros por parcela alto demais pra essa quantidade de parcelas -- confira se não era pra usar "% total do contrato".</div>' : ''}
+  `;
 }
 
 // Calcula a data do 1º vencimento a partir de hoje (dia em que o dinheiro sai),
@@ -2738,10 +2835,10 @@ function calcularPrimeiroVencimento(frequency) {
 async function decidirPropostaExterna(proposalId, decisao) {
   const params = { p_proposal_id: proposalId, p_decision: decisao };
   if (decisao === 'approved') {
-    params.p_frequency = document.getElementById(`propFreq_${proposalId}`).value;
-    params.p_installment_count = parseInt(document.getElementById(`propParcelas_${proposalId}`).value, 10);
-    const jurosPercent = parseFloat(document.getElementById(`propJuros_${proposalId}`).value);
-    params.p_periodic_interest_bps = Math.round(jurosPercent * 100);
+    const config = lerConfigJurosProposta(proposalId);
+    params.p_frequency = config.frequency;
+    params.p_installment_count = config.installmentCount;
+    params.p_periodic_interest_bps = config.periodicInterestBps;
   }
 
   const { data, error } = await window.supabaseClient.rpc('decide_client_proposal', params);
