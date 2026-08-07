@@ -1,7 +1,41 @@
 # HANDOFF.md - Control Premium
 
-Ultima atualizacao: 29/07/2026. Este arquivo deve ser lido primeiro por qualquer IA ou
+Ultima atualizacao: 06/08/2026. Este arquivo deve ser lido primeiro por qualquer IA ou
 desenvolvedor que assuma o projeto sem contexto previo da conversa.
+
+## Sessao 05–06/08/2026 — fechamento tecnico do cadastro e do CI
+
+- O cadastro por convite agora comprime cada uma das quatro fotos para ate 900 KB. O
+  limite anterior aceitava 3 MB por foto e podia ultrapassar o limite total da funcao na
+  Vercel antes de a rota receber a requisicao.
+- A rota valida CPF, telefones, tamanho, tipo dos arquivos e limites dos textos no
+  servidor. Sem a chave de servico necessaria para guardar os documentos, falha de forma
+  explicita em vez de confirmar uma proposta sem fotos.
+- Uploads com falha sao limpos. A migration
+  `202608050001_atomic_client_proposal.sql` adiciona `submit_client_proposal()`, que trava
+  o convite, cria a proposta e consome o link na mesma transacao. A rota mantem
+  compatibilidade temporaria ate a migration ser aplicada.
+- O cookie do portal ganhou `CLIENT_SESSION_SECRET` proprio, validacao adicional, testes
+  de integridade/expiracao e funcionamento correto em desenvolvimento HTTP. Respostas
+  com dados do cliente usam `Cache-Control: no-store`, e logs com identificadores foram
+  removidos.
+- O painel publicado nao permite mais entrar com usuarios de demonstracao. Esse modo
+  permanece apenas em `localhost`; em producao, uma sessao ausente retorna a entrada
+  real. `super_admin` e encaminhado para `/owner`.
+- Foram adicionados CSP e outros cabecalhos de protecao. O teste E2E foi atualizado para
+  a arquitetura atual de `/painel` sem iframe.
+- Validacao local repetida em 06/08: 110 testes, typecheck, lint, Prettier, build,
+  sintaxe dos scripts do prototipo e auditoria de dependencias passaram. O Playwright
+  local depende do binario Chromium, que o workflow do GitHub instala antes de executar.
+- A migration `202608050001_atomic_client_proposal.sql` foi aplicada no projeto real em
+  06/08 pelo conector autorizado e registrada no Supabase como
+  `20260807001820_atomic_client_proposal`. A verificacao confirmou `SECURITY DEFINER`,
+  `search_path` vazio, execucao permitida para `anon` e negada para `authenticated` e
+  `public`.
+
+Pendente fora do codigo: cadastrar `CLIENT_SESSION_SECRET` no ambiente protegido. O
+fallback temporario para `SUPABASE_SERVICE_ROLE_KEY` mantem a aplicacao funcional ate a
+configuracao separada do segredo.
 
 ## ⚠️ ALERTA CRITICO -- qual arquivo HTML editar
 
@@ -198,10 +232,10 @@ onde possivel):
 14. 202607260002_client_login_by_cpf.sql -- login de cliente real por CPF + quatro
     ultimos digitos do WhatsApp. Remove a assinatura anterior que aceitava somente CPF
     e recusa credenciais ambiguas entre tenants.
-18. 202607280001_create_loan.sql -- CONFIRMADO 28/07/2026 (sessao seguinte). Ver
+15. 202607280001_create_loan.sql -- CONFIRMADO 28/07/2026 (sessao seguinte). Ver
     "DESCOBERTA 28/07/2026" logo abaixo -- essa e a peca mais importante de todas as
     migracoes ate agora.
-19. 202607280002_fix_signup_link_rls_check.sql -- AINDA NAO CONFIRMADO COMO APLICADO por
+16. 202607280002_fix_signup_link_rls_check.sql -- AINDA NAO CONFIRMADO COMO APLICADO por
     Victor. Corrige bug critico: NENHUMA proposta anonima (fluxo /cadastro) conseguia ser
     registrada desde a migration 13 (250005), porque a policy de insert em
     client_proposals fazia EXISTS numa subquery contra client_signup_links, que tem RLS
@@ -262,6 +296,7 @@ credit_proposals/loans/installments/payments desde a fundacao, mas sem NENHUMA p
 ou seja, nem o proprio admin do tenant conseguia ler essas tabelas.
 
 Corrigido pela migration 202607280001_create_loan.sql:
+
 - Policies de select (staff do proprio tenant) para credit_proposals, loans,
   installments, payments.
 - Funcao create_loan_with_installments(): cria credit_proposals + loans + installments
@@ -286,6 +321,7 @@ tabela clients, deixa escolher emprestimo comum ou venda parcelada, e chama
 
 Validado local (npm test 106/106, typecheck, lint, build todos limpos) -- NUNCA testado
 contra o banco real. Falta:
+
 1. Confirmar a migration 202607280001 aplicada (mesmo processo da secao 4).
 2. Testar de ponta a ponta: aprovar um cliente -> Contratos -> Empréstimo real -> conferir
    se aparece certinho no /cliente do cliente logado.

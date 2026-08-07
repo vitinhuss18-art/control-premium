@@ -80,10 +80,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as RequestBody | null;
   if (!body) {
-    return NextResponse.json(
-      { message: "Dados inválidos." },
-      { status: 400 },
-    );
+    return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
   }
 
   const clientId = asString(body.clientId);
@@ -106,7 +103,10 @@ export async function POST(request: Request) {
     !firstDueDate
   ) {
     return NextResponse.json(
-      { message: "Preencha frequência, parcelas, juros e a primeira data de vencimento." },
+      {
+        message:
+          "Preencha frequência, parcelas, juros e a primeira data de vencimento.",
+      },
       { status: 400 },
     );
   }
@@ -123,7 +123,9 @@ export async function POST(request: Request) {
       const salePriceCents = asInt(body.salePriceCents);
       if (!productName || salePriceCents === undefined) {
         return NextResponse.json(
-          { message: "Venda parcelada exige nome do produto e valor de venda." },
+          {
+            message: "Venda parcelada exige nome do produto e valor de venda.",
+          },
           { status: 400 },
         );
       }

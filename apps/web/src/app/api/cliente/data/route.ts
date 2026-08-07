@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { CLIENT_SESSION_COOKIE, verifyClientSessionToken } from "@/lib/clientSession";
+import {
+  CLIENT_SESSION_COOKIE,
+  verifyClientSessionToken,
+} from "@/lib/clientSession";
 
 type InstallmentRow = {
   sequence_number: number;
@@ -19,7 +22,7 @@ type LoanRow = {
   installments: InstallmentRow[];
 };
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
@@ -29,14 +32,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const match = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${CLIENT_SESSION_COOKIE}=`));
-  const rawToken = match?.slice(CLIENT_SESSION_COOKIE.length + 1);
   const session = verifyClientSessionToken(
-    rawToken ? decodeURIComponent(rawToken) : null,
+    request.cookies.get(CLIENT_SESSION_COOKIE)?.value,
   );
   if (!session) {
     return NextResponse.json({ message: "Sessão expirada." }, { status: 401 });
@@ -67,12 +64,6 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-
-  console.log("cliente/data diagnostic:", {
-    sessionClientId: session.clientId,
-    sessionTenantId: session.tenantId,
-    loansFound: loans?.length ?? 0,
-  });
 
   const loanRows = (loans ?? []) as unknown as LoanRow[];
 
@@ -111,11 +102,14 @@ export async function GET(request: Request) {
     .eq("id", session.tenantId)
     .maybeSingle();
 
-  return NextResponse.json({
-    fullName: session.fullName,
-    status: session.status,
-    loans: shaped,
-    tenantName: tenant?.display_name ?? null,
-    tenantWhatsapp: tenant?.whatsapp_business_number ?? null,
-  });
+  return NextResponse.json(
+    {
+      fullName: session.fullName,
+      status: session.status,
+      loans: shaped,
+      tenantName: tenant?.display_name ?? null,
+      tenantWhatsapp: tenant?.whatsapp_business_number ?? null,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

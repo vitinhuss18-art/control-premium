@@ -23,8 +23,7 @@ export async function POST(request: Request) {
     cpf?: unknown;
     phoneLast4?: unknown;
   } | null;
-  const cpf =
-    typeof body?.cpf === "string" ? body.cpf.replace(/\D/g, "") : "";
+  const cpf = typeof body?.cpf === "string" ? body.cpf.replace(/\D/g, "") : "";
   const phoneLast4 =
     typeof body?.phoneLast4 === "string"
       ? body.phoneLast4.replace(/\D/g, "")
@@ -94,13 +93,18 @@ export async function POST(request: Request) {
     status: client.status,
   });
 
-  const response = NextResponse.json({
-    fullName: client.full_name,
-    status: client.status,
-  });
+  const response = NextResponse.json(
+    {
+      fullName: client.full_name,
+      status: client.status,
+    },
+    {
+      headers: { "Cache-Control": "no-store" },
+    },
+  );
   response.cookies.set(CLIENT_SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: CLIENT_SESSION_MAX_AGE_SECONDS,
