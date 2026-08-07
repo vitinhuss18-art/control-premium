@@ -21,6 +21,19 @@ type Row = {
   tenant_created_at: string;
 };
 
+type Plan = {
+  plan_id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  price_cents: number;
+  currency: string;
+  billing_interval: "monthly" | "yearly";
+};
+
+type SubscriptionStatus =
+  "trialing" | "active" | "past_due" | "cancelled" | "expired";
+
 const TRIAL_ALERT_DAYS = 3;
 
 const formatMoney = (cents: number | null) =>
@@ -40,6 +53,14 @@ const statusLabel: Record<string, string> = {
   expired: "Expirado",
 };
 
+const subscriptionStatuses: SubscriptionStatus[] = [
+  "trialing",
+  "active",
+  "past_due",
+  "cancelled",
+  "expired",
+];
+
 const tenantStatusLabel: Record<Row["tenant_status"], string> = {
   active: "Ativo",
   suspended: "Suspenso",
@@ -54,11 +75,22 @@ function trialDaysLeft(trialEndsAt: string | null): number | null {
 
 export default function OwnerDashboardPage() {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [pendingTenantId, setPendingTenantId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [managedRow, setManagedRow] = useState<Row | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [selectedSubscriptionStatus, setSelectedSubscriptionStatus] =
+    useState<SubscriptionStatus>("trialing");
+  const [freeDays, setFreeDays] = useState("7");
+  const [managementNote, setManagementNote] = useState("");
+  const [pendingManagementAction, setPendingManagementAction] = useState<
+    "subscription" | "free_days" | null
+  >(null);
 
   const supabase = useMemo<SupabaseClient | null>(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -67,15 +99,17 @@ export default function OwnerDashboardPage() {
   }, []);
 
   async function carregar(client: SupabaseClient) {
-    const { data, error: rpcError } = await client.rpc(
-      "owner_dashboard_overview",
-    );
-    if (rpcError) {
+    const [overviewResult, plansResult] = await Promise.all([
+      client.rpc("owner_dashboard_overview"),
+      client.rpc("owner_list_plans"),
+    ]);
+    if (overviewResult.error || plansResult.error) {
       setError("Acesso negado ou erro ao carregar dados.");
       return;
     }
     setError(null);
-    setRows((data ?? []) as Row[]);
+    setRows((overviewResult.data ?? []) as Row[]);
+    setPlans((plansResult.data ?? []) as Plan[]);
   }
 
   useEffect(() => {
@@ -179,6 +213,121 @@ export default function OwnerDashboardPage() {
     });
   }, [rows, search, statusFilter]);
 
+  function abrirGerenciamento(row: Row) {
+    const currentPlan = plans.find((plan) => plan.name === row.plan_name);
+    const fallbackPlan = plans.find((plan) => plan.active);
+    const currentStatus = row.subscription_status as SubscriptionStatus | null;
+
+    setManagedRow(row);
+    setSelectedPlanId(currentPlan?.plan_id ?? fallbackPlan?.plan_id ?? "");
+    setSelectedSubscriptionStatus(
+      currentStatus && subscriptionStatuses.includes(currentStatus)
+        ? currentStatus
+        : "trialing",
+    );
+    setFreeDays("7");
+    setManagementNote("");
+    setActionError(null);
+    setActionSuccess(null);
+  }
+
+  function motivoValido(): string | null {
+    const note = managementNote.trim();
+    if (!note) {
+      setActionError("Informe o motivo da alteração.");
+      return null;
+    }
+    if (note.length > 500) {
+      setActionError("O motivo deve ter no máximo 500 caracteres.");
+      return null;
+    }
+    return note;
+  }
+
+  async function salvarAssinatura() {
+    if (!supabase || !managedRow || !selectedPlanId) return;
+    const note = motivoValido();
+    if (!note) return;
+    const plan = plans.find((item) => item.plan_id === selectedPlanId);
+    if (
+      !window.confirm(
+        `Aplicar o plano "${plan?.name ?? "selecionado"}" com status "${statusLabel[selectedSubscriptionStatus]}" para "${managedRow.company_name}"?`,
+      )
+    ) {
+      return;
+    }
+
+    setActionError(null);
+    setActionSuccess(null);
+    setPendingManagementAction("subscription");
+    const { error: rpcError } = await supabase.rpc(
+      "owner_update_subscription",
+      {
+        p_tenant_id: managedRow.tenant_id,
+        p_plan_id: selectedPlanId,
+        p_status: selectedSubscriptionStatus,
+        p_note: note,
+      },
+    );
+    setPendingManagementAction(null);
+    if (rpcError) {
+      setActionError(
+        `Não foi possível alterar a assinatura: ${rpcError.message}`,
+      );
+      return;
+    }
+
+    const companyName = managedRow.company_name;
+    setManagedRow(null);
+    setActionSuccess(`Plano e status de "${companyName}" atualizados.`);
+    await carregar(supabase);
+  }
+
+  async function concederDiasGratis() {
+    if (!supabase || !managedRow) return;
+    const days = Number(freeDays);
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      setActionError("Informe entre 1 e 3650 dias grátis.");
+      return;
+    }
+    const note = motivoValido();
+    if (!note) return;
+    if (
+      !window.confirm(
+        `Conceder ${days} dia(s) grátis para "${managedRow.company_name}"?`,
+      )
+    ) {
+      return;
+    }
+
+    setActionError(null);
+    setActionSuccess(null);
+    setPendingManagementAction("free_days");
+    const { data, error: rpcError } = await supabase.rpc(
+      "owner_grant_free_days",
+      {
+        p_tenant_id: managedRow.tenant_id,
+        p_days: days,
+        p_note: note,
+      },
+    );
+    setPendingManagementAction(null);
+    if (rpcError) {
+      setActionError(`Não foi possível conceder os dias: ${rpcError.message}`);
+      return;
+    }
+
+    const companyName = managedRow.company_name;
+    const newEndDate = typeof data === "string" ? formatDate(data) : null;
+    setManagedRow(null);
+    setActionSuccess(
+      `${days} dia(s) grátis concedidos para "${companyName}"${
+        newEndDate ? `, até ${newEndDate}` : ""
+      }.`,
+    );
+    await carregar(supabase);
+  }
+
   async function alternarStatusTenant(row: Row) {
     if (!supabase) return;
     const novoStatus =
@@ -208,6 +357,7 @@ export default function OwnerDashboardPage() {
       }
     }
     setActionError(null);
+    setActionSuccess(null);
     setPendingTenantId(row.tenant_id);
     const { error: rpcError } = await supabase.rpc("owner_set_tenant_status", {
       p_tenant_id: row.tenant_id,
@@ -245,6 +395,7 @@ export default function OwnerDashboardPage() {
       )}
       {error && <div className="owner-error">{error}</div>}
       {actionError && <div className="owner-error">{actionError}</div>}
+      {actionSuccess && <div className="owner-success">{actionSuccess}</div>}
       {supabase && !error && !rows && (
         <div className="owner-loading">Carregando assinantes...</div>
       )}
@@ -450,23 +601,32 @@ export default function OwnerDashboardPage() {
                       </span>
                     </td>
                     <td>
-                      {row.tenant_status !== "archived" && (
+                      <div className="owner-action-stack">
                         <button
-                          className={
-                            row.tenant_status === "suspended"
-                              ? "owner-action-btn owner-action-btn-positive"
-                              : "owner-action-btn owner-action-btn-danger"
-                          }
+                          className="owner-action-btn owner-action-btn-primary"
                           disabled={pendingTenantId === row.tenant_id}
-                          onClick={() => alternarStatusTenant(row)}
+                          onClick={() => abrirGerenciamento(row)}
                         >
-                          {pendingTenantId === row.tenant_id
-                            ? "..."
-                            : row.tenant_status === "suspended"
-                              ? "Reativar"
-                              : "Suspender"}
+                          Gerenciar
                         </button>
-                      )}
+                        {row.tenant_status !== "archived" && (
+                          <button
+                            className={
+                              row.tenant_status === "suspended"
+                                ? "owner-action-btn owner-action-btn-positive"
+                                : "owner-action-btn owner-action-btn-danger"
+                            }
+                            disabled={pendingTenantId === row.tenant_id}
+                            onClick={() => alternarStatusTenant(row)}
+                          >
+                            {pendingTenantId === row.tenant_id
+                              ? "..."
+                              : row.tenant_status === "suspended"
+                                ? "Reativar"
+                                : "Suspender"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -482,6 +642,155 @@ export default function OwnerDashboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {managedRow && (
+        <div className="owner-modal-backdrop" role="presentation">
+          <section
+            className="owner-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="owner-management-title"
+          >
+            <div className="owner-modal-header">
+              <div>
+                <span>Controle do assinante</span>
+                <h2 id="owner-management-title">{managedRow.company_name}</h2>
+              </div>
+              <button
+                className="owner-modal-close"
+                type="button"
+                aria-label="Fechar"
+                disabled={pendingManagementAction !== null}
+                onClick={() => setManagedRow(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="owner-management-current">
+              <span>
+                Plano atual: <b>{managedRow.plan_name ?? "Sem plano"}</b>
+              </span>
+              <span>
+                Status:{" "}
+                <b>
+                  {managedRow.subscription_status
+                    ? (statusLabel[managedRow.subscription_status] ??
+                      managedRow.subscription_status)
+                    : "Sem assinatura"}
+                </b>
+              </span>
+              <span>
+                Dias grátis até: <b>{formatDate(managedRow.trial_ends_at)}</b>
+              </span>
+            </div>
+
+            <div className="owner-management-section">
+              <h3>Plano e status</h3>
+              <div className="owner-management-grid">
+                <label>
+                  Plano
+                  <select
+                    value={selectedPlanId}
+                    onChange={(event) => setSelectedPlanId(event.target.value)}
+                  >
+                    {plans
+                      .filter((plan) => plan.active)
+                      .map((plan) => (
+                        <option key={plan.plan_id} value={plan.plan_id}>
+                          {plan.name} · {formatMoney(plan.price_cents)} /{" "}
+                          {plan.billing_interval === "yearly" ? "ano" : "mês"}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Status da assinatura
+                  <select
+                    value={selectedSubscriptionStatus}
+                    onChange={(event) =>
+                      setSelectedSubscriptionStatus(
+                        event.target.value as SubscriptionStatus,
+                      )
+                    }
+                  >
+                    {subscriptionStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {statusLabel[status]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                className="owner-management-submit"
+                type="button"
+                disabled={pendingManagementAction !== null || !selectedPlanId}
+                onClick={salvarAssinatura}
+              >
+                {pendingManagementAction === "subscription"
+                  ? "Salvando..."
+                  : "Aplicar plano e status"}
+              </button>
+            </div>
+
+            <div className="owner-management-section owner-management-section-highlight">
+              <h3>Conceder dias grátis</h3>
+              <p>
+                Os dias são somados ao período grátis ainda válido. A assinatura
+                passa para “Em teste”.
+              </p>
+              <div className="owner-free-days-row">
+                {[7, 15, 30].map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    className={freeDays === String(days) ? "active" : undefined}
+                    onClick={() => setFreeDays(String(days))}
+                  >
+                    +{days} dias
+                  </button>
+                ))}
+                <input
+                  type="number"
+                  min="1"
+                  max="3650"
+                  step="1"
+                  aria-label="Quantidade personalizada de dias grátis"
+                  value={freeDays}
+                  onChange={(event) => setFreeDays(event.target.value)}
+                />
+              </div>
+              <button
+                className="owner-management-submit owner-management-submit-gold"
+                type="button"
+                disabled={pendingManagementAction !== null}
+                onClick={concederDiasGratis}
+              >
+                {pendingManagementAction === "free_days"
+                  ? "Concedendo..."
+                  : "Conceder dias grátis"}
+              </button>
+            </div>
+
+            <label className="owner-management-note">
+              Motivo da alteração (obrigatório)
+              <textarea
+                maxLength={500}
+                rows={3}
+                placeholder="Ex.: cortesia comercial autorizada"
+                value={managementNote}
+                onChange={(event) => setManagementNote(event.target.value)}
+              />
+              <span>{managementNote.length}/500</span>
+            </label>
+            <p className="owner-management-audit">
+              Todas as ações ficam registradas na auditoria com usuário, data,
+              valores anteriores e novos.
+            </p>
+          </section>
         </div>
       )}
     </main>
