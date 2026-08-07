@@ -1455,7 +1455,6 @@ let perfilAtual = null;
 let usuarioAtual = null;
 let clientesDB = [];
 let clientesReaisDB = []; // clientes reais vindos do Supabase (tabela public.clients), separados do mock local
-let propostasExternasCache = {}; // ultimas propostas carregadas (client_proposals), por id, pra reusar loan_amount_cents ao aprovar
 let cobradoresDB = [];
 let localizacoesDB = {};
 let solicitacoesLocalizacao = {};
@@ -2768,9 +2767,6 @@ async function carregarPropostasExternas() {
     return;
   }
 
-  propostasExternasCache = {};
-  propostas.forEach(p => { propostasExternasCache[p.id] = p; });
-
   alvo.innerHTML = `<div style="color:var(--primary);font-size:12px;font-weight:700;margin-bottom:10px;">📥 Propostas recebidas pelo link (${propostas.length})</div>` +
     propostas.map(p => `
       <div class="card" id="propostaExterna_${p.id}">
@@ -2835,14 +2831,17 @@ async function decidirPropostaExterna(proposalId, decisao) {
   if (decisao === 'approved') {
     // Aprovar a proposta so cria o cliente (decide_client_proposal). O
     // emprestimo em si e criado aqui em seguida, reusando o valor solicitado
-    // (loan_amount_cents) que ja veio na proposta -- nao precisa de tela
-    // separada de "Venda Parcelada" pra isso.
-    const propostaOriginal = propostasExternasCache[proposalId];
+    // (loan_amount_cents) que a propria RPC devolve na mesma resposta --
+    // nao depende mais do cache local do navegador (propostasExternasCache),
+    // que podia estar vazio/desatualizado (pagina recarregada, aba reaberta,
+    // corrida entre carregamentos) e fazia o emprestimo falhar em silencio
+    // mesmo com o cliente ja criado. Ver migration
+    // 202608070001_return_loan_amount_on_decision.sql.
     try {
       const { data: sessao } = await window.supabaseClient.auth.getSession();
       const token = sessao?.session?.access_token;
-      if (!token || !propostaOriginal) {
-        throw new Error('Sessão ou dados da proposta não encontrados');
+      if (!token || !registro.loan_amount_cents) {
+        throw new Error('Sessão ou valor solicitado não encontrados');
       }
       const resp = await fetch('/api/admin/loans', {
         method: 'POST',
@@ -2854,7 +2853,7 @@ async function decidirPropostaExterna(proposalId, decisao) {
           installmentCount: params.p_installment_count,
           periodicInterestBps: params.p_periodic_interest_bps,
           firstDueDate: calcularPrimeiroVencimento(params.p_frequency),
-          principalCents: propostaOriginal.loan_amount_cents,
+          principalCents: registro.loan_amount_cents,
         }),
       });
       const loanResult = await resp.json().catch(() => ({}));
