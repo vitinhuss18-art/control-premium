@@ -111,7 +111,16 @@ export default function OwnerDashboardPage() {
       return (
         row.subscription_status === "trialing" &&
         daysLeft !== null &&
+        daysLeft >= 0 &&
         daysLeft <= TRIAL_ALERT_DAYS
+      );
+    }).length;
+    const trialExpiredCount = rows.filter((row) => {
+      const daysLeft = trialDaysLeft(row.trial_ends_at);
+      return (
+        row.subscription_status === "trialing" &&
+        daysLeft !== null &&
+        daysLeft < 0
       );
     }).length;
     const suspendedCount = rows.filter(
@@ -134,6 +143,7 @@ export default function OwnerDashboardPage() {
       activeCount,
       trialCount,
       trialEndingSoonCount,
+      trialExpiredCount,
       suspendedCount,
       mrrCents,
       totalClients,
@@ -151,36 +161,64 @@ export default function OwnerDashboardPage() {
         row.company_name.toLowerCase().includes(term) ||
         (row.admin_full_name ?? "").toLowerCase().includes(term) ||
         (row.admin_email ?? "").toLowerCase().includes(term);
+      const trialDays = trialDaysLeft(row.trial_ends_at);
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "overdue"
           ? row.overdue_installments_count > 0
-          : row.subscription_status === statusFilter);
+          : statusFilter === "trial_expired"
+            ? row.subscription_status === "trialing" &&
+              trialDays !== null &&
+              trialDays < 0
+            : statusFilter === "tenant_suspended"
+              ? row.tenant_status === "suspended"
+              : statusFilter === "tenant_archived"
+                ? row.tenant_status === "archived"
+                : row.subscription_status === statusFilter);
       return matchesTerm && matchesStatus;
     });
   }, [rows, search, statusFilter]);
 
   async function alternarStatusTenant(row: Row) {
     if (!supabase) return;
-    const novoStatus = row.tenant_status === "suspended" ? "active" : "suspended";
-    const acao =
-      novoStatus === "suspended" ? "suspender" : "reativar";
+    const novoStatus =
+      row.tenant_status === "suspended" ? "active" : "suspended";
+    const acao = novoStatus === "suspended" ? "suspender" : "reativar";
     if (
-      !window.confirm(
-        `Confirma ${acao} o acesso de "${row.company_name}"?`,
-      )
+      !window.confirm(`Confirma ${acao} o acesso de "${row.company_name}"?`)
     ) {
       return;
+    }
+    let motivo: string | null = null;
+    if (novoStatus === "suspended") {
+      const resposta = window.prompt(
+        `Informe o motivo da suspensão de "${row.company_name}" (obrigatório):`,
+      );
+      if (resposta === null) return;
+      motivo = resposta.trim();
+      if (!motivo) {
+        setActionError("Informe o motivo da suspensão.");
+        return;
+      }
+      if (motivo.length > 500) {
+        setActionError(
+          "O motivo da suspensão deve ter no máximo 500 caracteres.",
+        );
+        return;
+      }
     }
     setActionError(null);
     setPendingTenantId(row.tenant_id);
     const { error: rpcError } = await supabase.rpc("owner_set_tenant_status", {
       p_tenant_id: row.tenant_id,
       p_status: novoStatus,
+      p_note: motivo,
     });
     setPendingTenantId(null);
     if (rpcError) {
-      setActionError(`Não foi possível ${acao} "${row.company_name}": ${rpcError.message}`);
+      setActionError(
+        `Não foi possível ${acao} "${row.company_name}": ${rpcError.message}`,
+      );
       return;
     }
     await carregar(supabase);
@@ -225,11 +263,33 @@ export default function OwnerDashboardPage() {
             <span>Em teste</span>
             <b>{totals.trialCount}</b>
           </div>
-          <div className={totals.trialEndingSoonCount > 0 ? "owner-kpi owner-kpi-alert" : "owner-kpi"}>
+          <div
+            className={
+              totals.trialEndingSoonCount > 0
+                ? "owner-kpi owner-kpi-alert"
+                : "owner-kpi"
+            }
+          >
             <span>Trial acabando (≤{TRIAL_ALERT_DAYS}d)</span>
             <b>{totals.trialEndingSoonCount}</b>
           </div>
-          <div className={totals.suspendedCount > 0 ? "owner-kpi owner-kpi-alert" : "owner-kpi"}>
+          <div
+            className={
+              totals.trialExpiredCount > 0
+                ? "owner-kpi owner-kpi-alert"
+                : "owner-kpi"
+            }
+          >
+            <span>Trials vencidos</span>
+            <b>{totals.trialExpiredCount}</b>
+          </div>
+          <div
+            className={
+              totals.suspendedCount > 0
+                ? "owner-kpi owner-kpi-alert"
+                : "owner-kpi"
+            }
+          >
             <span>Suspensos</span>
             <b>{totals.suspendedCount}</b>
           </div>
@@ -241,11 +301,23 @@ export default function OwnerDashboardPage() {
             <span>Clientes (todos)</span>
             <b>{totals.totalClients}</b>
           </div>
-          <div className={totals.overdueInstallments > 0 ? "owner-kpi owner-kpi-alert" : "owner-kpi"}>
+          <div
+            className={
+              totals.overdueInstallments > 0
+                ? "owner-kpi owner-kpi-alert"
+                : "owner-kpi"
+            }
+          >
             <span>Parcelas em atraso</span>
             <b>{totals.overdueInstallments}</b>
           </div>
-          <div className={totals.overdueAmountCents > 0 ? "owner-kpi owner-kpi-alert" : "owner-kpi"}>
+          <div
+            className={
+              totals.overdueAmountCents > 0
+                ? "owner-kpi owner-kpi-alert"
+                : "owner-kpi"
+            }
+          >
             <span>Valor em atraso</span>
             <b>{formatMoney(totals.overdueAmountCents)}</b>
           </div>
@@ -268,11 +340,14 @@ export default function OwnerDashboardPage() {
           >
             <option value="all">Todos os status</option>
             <option value="trialing">Em teste</option>
+            <option value="trial_expired">Trial vencido</option>
             <option value="active">Ativos</option>
             <option value="past_due">Pagamento pendente</option>
             <option value="cancelled">Cancelados</option>
             <option value="expired">Expirados</option>
             <option value="overdue">Com parcela em atraso</option>
+            <option value="tenant_suspended">Acesso suspenso</option>
+            <option value="tenant_archived">Acesso arquivado</option>
           </select>
         </div>
       )}
@@ -303,11 +378,20 @@ export default function OwnerDashboardPage() {
                 const trialSoon =
                   row.subscription_status === "trialing" &&
                   daysLeft !== null &&
+                  daysLeft >= 0 &&
                   daysLeft <= TRIAL_ALERT_DAYS;
+                const trialExpired =
+                  row.subscription_status === "trialing" &&
+                  daysLeft !== null &&
+                  daysLeft < 0;
                 const hasOverdue = row.overdue_installments_count > 0;
                 const rowClasses = [
-                  row.tenant_status === "suspended" ? "owner-row-suspended" : "",
-                  trialSoon || hasOverdue ? "owner-row-alert" : "",
+                  row.tenant_status === "suspended"
+                    ? "owner-row-suspended"
+                    : "",
+                  trialSoon || trialExpired || hasOverdue
+                    ? "owner-row-alert"
+                    : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -328,9 +412,9 @@ export default function OwnerDashboardPage() {
                             row.subscription_status)
                           : "—"}
                       </span>
-                      {trialSoon && (
+                      {(trialSoon || trialExpired) && (
                         <div className="owner-row-note">
-                          {daysLeft !== null && daysLeft >= 0
+                          {!trialExpired && daysLeft !== null
                             ? `vence em ${daysLeft} dia(s)`
                             : "trial vencido"}
                         </div>
@@ -361,7 +445,8 @@ export default function OwnerDashboardPage() {
                       <span
                         className={`owner-tenant-status owner-tenant-status-${row.tenant_status}`}
                       >
-                        {tenantStatusLabel[row.tenant_status] ?? row.tenant_status}
+                        {tenantStatusLabel[row.tenant_status] ??
+                          row.tenant_status}
                       </span>
                     </td>
                     <td>
