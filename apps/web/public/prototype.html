@@ -1287,13 +1287,15 @@
     <div class="section-title">💳 Assinatura</div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div><div style="font-weight:800;">Plano Premium</div><div style="color:var(--grey2);font-size:10px;">500 clientes</div></div>
-        <span class="badge gold">🌟 Ativo</span>
+        <div><div id="billingPlanName" style="font-weight:800;">Plano Premium</div><div id="billingPlanLimit" style="color:var(--grey2);font-size:10px;">500 clientes</div></div>
+        <span id="billingStatusBadge" class="badge gold">⏳ Consultando</span>
       </div>
-      <div style="color:var(--grey2);font-size:11px;margin-bottom:10px;">Mensalidade recorrente · sem contrato de fidelidade, cancele quando quiser.</div>
+      <div style="font-size:20px;font-weight:900;margin-bottom:3px;">R$ 49,90 <span style="font-size:10px;color:var(--grey2);font-weight:500;">/ mês</span></div>
+      <div style="color:var(--grey2);font-size:11px;margin-bottom:5px;">Cartão recorrente ou renovação mensal por PIX, processados pelo Mercado Pago.</div>
+      <div id="billingStatusDetail" style="color:var(--grey2);font-size:10px;margin-bottom:10px;">Verificando sua assinatura...</div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-primary" style="background:var(--secondary);flex:1;" onclick="renovarAssinatura('pix')">💳 PIX</button>
-        <button class="btn-secondary" style="flex:1;" onclick="renovarAssinatura('cartao')">💳 Cartão</button>
+        <button id="billingPixButton" class="btn-primary" style="background:var(--secondary);flex:1;" onclick="renovarAssinatura('pix')">💠 Pagar com PIX</button>
+        <button id="billingCardButton" class="btn-secondary" style="flex:1;" onclick="renovarAssinatura('card')">💳 Assinar no cartão</button>
       </div>
     </div>
 
@@ -1968,17 +1970,106 @@ async function copiarPix() {
 }
 
 // ============================================================
-// ASSINATURA
+// ASSINATURA DO SAAS (MERCADO PAGO)
 // ============================================================
-function renovarAssinatura(tipo) {
-  assinaturaVencimento = new Date();
-  assinaturaVencimento.setDate(assinaturaVencimento.getDate() + 30);
+function mostrarToastAssinatura(mensagem, duracao = 4000) {
   const t = document.getElementById('toast');
-  t.textContent = `✅ Assinatura renovada via ${tipo === 'pix' ? 'PIX' : 'Cartão'} por 30 dias. 🌟`;
+  if (!t) return;
+  t.textContent = mensagem;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-  registrarAuditoria('Assinatura renovada', `via ${tipo} - Premium`);
-  salvarEstado();
+  setTimeout(() => t.classList.remove('show'), duracao);
+}
+
+function formatarDataAssinatura(valor) {
+  if (!valor) return null;
+  const data = new Date(valor);
+  if (Number.isNaN(data.getTime())) return null;
+  return data.toLocaleDateString('pt-BR');
+}
+
+async function tokenAssinante() {
+  if (!window.supabaseClient) return null;
+  const { data } = await window.supabaseClient.auth.getSession();
+  return data?.session?.access_token || null;
+}
+
+async function carregarStatusAssinatura(silencioso = false) {
+  const token = await tokenAssinante();
+  if (!token) return null;
+  try {
+    const resp = await fetch('/api/billing/status', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(resultado.message || 'Falha ao consultar assinatura');
+
+    const assinatura = resultado.subscription;
+    const plano = Array.isArray(assinatura?.saas_plans)
+      ? assinatura.saas_plans[0]
+      : assinatura?.saas_plans;
+    const status = assinatura?.status || 'expired';
+    const nomesStatus = {
+      active: '🌟 Ativo',
+      trialing: '🎁 Grátis',
+      past_due: '⚠ Pendente',
+      cancelled: 'Cancelado',
+      expired: 'Expirado',
+    };
+    const badge = document.getElementById('billingStatusBadge');
+    const nomePlano = document.getElementById('billingPlanName');
+    const limite = document.getElementById('billingPlanLimit');
+    const detalhe = document.getElementById('billingStatusDetail');
+    if (nomePlano) nomePlano.textContent = `Plano ${plano?.name || 'Grátis'}`;
+    if (limite) limite.textContent = plano?.code === 'premium' ? 'Até 500 clientes' : 'Até 15 clientes';
+    if (badge) {
+      badge.textContent = nomesStatus[status] || status;
+      badge.className = status === 'active' ? 'badge gold' : 'badge';
+    }
+
+    const vencimento = formatarDataAssinatura(
+      assinatura?.current_period_end || assinatura?.trial_ends_at
+    );
+    const ultimaFatura = resultado.latestInvoice;
+    let textoDetalhe = vencimento ? `Acesso válido até ${vencimento}.` : 'Escolha uma forma de pagamento para ativar o Premium.';
+    if (ultimaFatura?.status === 'pending') textoDetalhe = 'Pagamento pendente no Mercado Pago. A confirmação será automática.';
+    if (ultimaFatura?.status === 'paid') textoDetalhe = `Último pagamento confirmado${vencimento ? ` · acesso até ${vencimento}` : ''}.`;
+    if (detalhe) detalhe.textContent = textoDetalhe;
+    return resultado;
+  } catch (e) {
+    if (!silencioso) mostrarToastAssinatura(`⚠ ${e.message}`);
+    return null;
+  }
+}
+
+async function renovarAssinatura(tipo) {
+  const metodo = tipo === 'pix' ? 'pix' : 'card';
+  const botaoPix = document.getElementById('billingPixButton');
+  const botaoCard = document.getElementById('billingCardButton');
+  const botoes = [botaoPix, botaoCard].filter(Boolean);
+  botoes.forEach(botao => { botao.disabled = true; });
+  try {
+    const token = await tokenAssinante();
+    if (!token) throw new Error('Sessão expirada. Entre novamente.');
+    mostrarToastAssinatura('⏳ Abrindo o checkout seguro do Mercado Pago...');
+    const resp = await fetch('/api/billing/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ method: metodo }),
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok || !resultado.checkoutUrl) {
+      throw new Error(resultado.message || 'Não foi possível abrir o Mercado Pago');
+    }
+    registrarAuditoria('Checkout da assinatura iniciado', metodo === 'pix' ? 'PIX - Premium' : 'Cartão recorrente - Premium');
+    window.location.assign(resultado.checkoutUrl);
+  } catch (e) {
+    botoes.forEach(botao => { botao.disabled = false; });
+    mostrarToastAssinatura(`⚠ ${e.message}`, 5000);
+  }
 }
 
 function salvarDadosAssinante() {
@@ -3791,6 +3882,31 @@ function init() {
           }
           carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
           carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
+          carregarStatusAssinatura(true).then(statusInicial => {
+            const retornouDoCheckout = new URLSearchParams(window.location.search).get('billing') === 'return';
+            if (!retornouDoCheckout) return;
+            const fatura = statusInicial?.latestInvoice;
+            if (fatura?.status === 'paid') {
+              mostrarToastAssinatura('✅ Pagamento confirmado. Plano Premium ativo! 🌟', 5000);
+              window.history.replaceState({}, '', '/painel');
+              return;
+            }
+            mostrarToastAssinatura('⏳ Aguardando a confirmação do Mercado Pago...', 5000);
+            let tentativas = 0;
+            const consulta = setInterval(async () => {
+              tentativas += 1;
+              const atualizado = await carregarStatusAssinatura(true);
+              if (atualizado?.latestInvoice?.status === 'paid') {
+                clearInterval(consulta);
+                mostrarToastAssinatura('✅ Pagamento confirmado. Plano Premium ativo! 🌟', 5000);
+                window.history.replaceState({}, '', '/painel');
+              } else if (tentativas >= 12) {
+                clearInterval(consulta);
+                mostrarToastAssinatura('Pagamento ainda pendente. O plano será liberado automaticamente após a confirmação.', 6000);
+                window.history.replaceState({}, '', '/painel');
+              }
+            }, 5000);
+          });
         } else if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
           // O login antigo com dados de demonstração fica disponível somente
           // no desenvolvimento local. Em produção, todo acesso passa pela

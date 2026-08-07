@@ -14,14 +14,15 @@
     "@control-premium/integrations": "0.1.0",
     "@control-premium/ui": "0.1.0",
     "@supabase/supabase-js": "2.110.8",
+    "mercadopago": "3.3.0",
     "next": "16.2.11",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.0.0"
   }
 }
