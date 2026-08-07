@@ -21,6 +21,7 @@ describe("client session", () => {
 
   afterEach(() => {
     delete process.env.CLIENT_SESSION_SECRET;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     vi.useRealTimers();
   });
 
@@ -39,5 +40,22 @@ describe("client session", () => {
     const token = createClientSessionToken(payload);
     vi.advanceTimersByTime(13 * 60 * 60 * 1000);
     expect(verifyClientSessionToken(token)).toBeNull();
+  });
+
+  it("deriva uma chave de sessão quando o segredo dedicado não existe", () => {
+    delete process.env.CLIENT_SESSION_SECRET;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key-".repeat(4);
+
+    const token = createClientSessionToken(payload);
+    expect(verifyClientSessionToken(token)).toMatchObject(payload);
+  });
+
+  it("recusa um segredo dedicado curto mesmo com fallback disponível", () => {
+    process.env.CLIENT_SESSION_SECRET = "curto";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key-".repeat(4);
+
+    expect(() => createClientSessionToken(payload)).toThrow(
+      "Segredo da sessão do cliente não configurado.",
+    );
   });
 });

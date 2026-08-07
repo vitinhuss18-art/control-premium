@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 // Sessão do cliente (portal /cliente) não usa Supabase Auth de verdade — o
 // login é feito por CPF + 4 últimos dígitos do WhatsApp (ver
@@ -24,12 +24,25 @@ export type ClientSessionPayload = {
 };
 
 function getSecret(): string {
-  const secret =
-    process.env.CLIENT_SESSION_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!secret || secret.length < 32) {
+  const configuredSecret = process.env.CLIENT_SESSION_SECRET;
+  if (configuredSecret) {
+    if (configuredSecret.length < 32) {
+      throw new Error("Segredo da sessão do cliente não configurado.");
+    }
+    return configuredSecret;
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey || serviceRoleKey.length < 32) {
     throw new Error("Segredo da sessão do cliente não configurado.");
   }
-  return secret;
+
+  // Derivação com domínio próprio: mantém instalações existentes operacionais
+  // sem reutilizar diretamente a credencial administrativa como chave HMAC.
+  return createHash("sha256")
+    .update("control-premium/client-session/v1\0")
+    .update(serviceRoleKey)
+    .digest("hex");
 }
 
 function base64UrlEncode(input: string): string {

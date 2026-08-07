@@ -6,8 +6,9 @@
   fotos e limpeza de uploads incompletos;
 - registra a proposta e consome o convite de uso único em uma transação atômica no
   Supabase;
-- separa e valida o segredo do cookie do portal do cliente, adiciona testes de
-  integridade e impede cache de respostas autenticadas;
+- separa e valida o segredo do cookie do portal do cliente, deriva com domínio próprio
+  uma chave segura quando a variável opcional não existe, adiciona testes de integridade
+  e impede cache de respostas autenticadas;
 - remove acessos de demonstração da produção e adiciona cabeçalhos de segurança;
 - confirma 110 testes, typecheck, lint, formatação, build e auditoria sem
   vulnerabilidades.

@@ -33,9 +33,10 @@ desenvolvedor que assuma o projeto sem contexto previo da conversa.
   `search_path` vazio, execucao permitida para `anon` e negada para `authenticated` e
   `public`.
 
-Pendente fora do codigo: cadastrar `CLIENT_SESSION_SECRET` no ambiente protegido. O
-fallback temporario para `SUPABASE_SERVICE_ROLE_KEY` mantem a aplicacao funcional ate a
-configuracao separada do segredo.
+`CLIENT_SESSION_SECRET` pode ser cadastrado no ambiente protegido como reforco opcional.
+Quando ele nao existe, o servidor deriva por SHA-256 uma chave exclusiva, com dominio
+proprio, a partir da `SUPABASE_SERVICE_ROLE_KEY`; a credencial administrativa nunca e
+usada diretamente como chave HMAC.
 
 ## ⚠️ ALERTA CRITICO -- qual arquivo HTML editar
 
