@@ -130,7 +130,9 @@ export function SubscriberAccess() {
         refresh_token: body.refreshToken,
       });
       if (error) throw error;
-      window.location.assign(body.role === "super_admin" ? "/owner" : "/painel");
+      window.location.assign(
+        body.role === "super_admin" ? "/owner" : "/painel",
+      );
     } catch (error) {
       setMessage({
         kind: "error",
@@ -184,9 +186,7 @@ export function SubscriberAccess() {
       setMessage({
         kind: "error",
         text:
-          error instanceof Error
-            ? error.message
-            : "Não foi possível entrar.",
+          error instanceof Error ? error.message : "Não foi possível entrar.",
       });
     } finally {
       setBusy(false);
@@ -344,7 +344,9 @@ export function SubscriberAccess() {
                       CPF
                       <input
                         value={cpf}
-                        onChange={(event) => setCpf(maskCpf(event.target.value))}
+                        onChange={(event) =>
+                          setCpf(maskCpf(event.target.value))
+                        }
                         inputMode="numeric"
                         autoComplete="username"
                         placeholder="000.000.000-00"
@@ -392,8 +394,8 @@ export function SubscriberAccess() {
                 <>
                   <h2>Área do cliente</h2>
                   <p className="muted">
-                    Use o CPF cadastrado e os 4 últimos dígitos do seu
-                    WhatsApp para continuar.
+                    Use o CPF cadastrado e os 4 últimos dígitos do seu WhatsApp
+                    para continuar.
                   </p>
                   <form onSubmit={clientLogin}>
                     <label>

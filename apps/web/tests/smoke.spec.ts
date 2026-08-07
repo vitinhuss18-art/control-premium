@@ -34,9 +34,6 @@ test("abre login e cadastro", async ({ page }) => {
 
 test("mantém o painel operacional disponível", async ({ page }) => {
   await page.goto("/painel");
-  const frame = page.frameLocator(
-    'iframe[title="Painel do assinante Control Premium"]',
-  );
-  await expect(frame.locator("#splash")).toBeVisible();
-  await expect(frame.locator("#login")).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator("#splash")).toBeVisible();
+  await expect(page.locator("#login")).toBeVisible({ timeout: 5_000 });
 });

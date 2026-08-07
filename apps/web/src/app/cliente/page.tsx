@@ -47,7 +47,10 @@ function formatDate(value: string): string {
 // HANDOFF.md. Enquanto isso não é decidido, a opção de "pagar" leva o
 // cliente pro WhatsApp do assinante com a mensagem já pronta, em vez de
 // deixar sem nenhuma ação possível na tela.
-function whatsappLink(rawNumber: string | null, message: string): string | null {
+function whatsappLink(
+  rawNumber: string | null,
+  message: string,
+): string | null {
   if (!rawNumber) return null;
   const digits = rawNumber.replace(/\D/g, "");
   if (!digits) return null;
@@ -152,126 +155,126 @@ export default function ClientPortalPage() {
             const tenantWhatsapp = data.tenantWhatsapp;
             const tenantName = data.tenantName;
             return (
-            <article key={loan.loanId} className="loan-card">
-              <div className="loan-card__top">
-                <strong>
-                  Empréstimo{" "}
-                  {new Date(loan.createdAt).toLocaleDateString("pt-BR")}
-                </strong>
-                <span
-                  className={`loan-card__badge${
-                    loan.status === "settled"
-                      ? " loan-card__badge--settled"
-                      : ""
-                  }${
-                    loan.status === "delinquent"
-                      ? " loan-card__badge--delinquent"
-                      : ""
-                  }`}
-                >
-                  {LOAN_STATUS_LABEL[loan.status] ?? loan.status}
-                </span>
-              </div>
-
-              <div className="loan-card__totals">
-                <div>
-                  <span>Valor contratado</span>
-                  <strong>{formatCents(loan.contractedTotalCents)}</strong>
+              <article key={loan.loanId} className="loan-card">
+                <div className="loan-card__top">
+                  <strong>
+                    Empréstimo{" "}
+                    {new Date(loan.createdAt).toLocaleDateString("pt-BR")}
+                  </strong>
+                  <span
+                    className={`loan-card__badge${
+                      loan.status === "settled"
+                        ? " loan-card__badge--settled"
+                        : ""
+                    }${
+                      loan.status === "delinquent"
+                        ? " loan-card__badge--delinquent"
+                        : ""
+                    }`}
+                  >
+                    {LOAN_STATUS_LABEL[loan.status] ?? loan.status}
+                  </span>
                 </div>
-                <div>
-                  <span>Saldo em aberto</span>
-                  <strong>{formatCents(loan.outstandingCents)}</strong>
+
+                <div className="loan-card__totals">
+                  <div>
+                    <span>Valor contratado</span>
+                    <strong>{formatCents(loan.contractedTotalCents)}</strong>
+                  </div>
+                  <div>
+                    <span>Saldo em aberto</span>
+                    <strong>{formatCents(loan.outstandingCents)}</strong>
+                  </div>
                 </div>
-              </div>
 
-              {loan.outstandingCents > 0 &&
-                loan.status !== "cancelled" &&
-                loan.status !== "settled" &&
-                (() => {
-                  const link = whatsappLink(
-                    tenantWhatsapp,
-                    `Oi! Quero quitar meu empréstimo. Saldo em aberto: ${formatCents(
-                      loan.outstandingCents,
-                    )}.`,
-                  );
-                  return link ? (
-                    <a
-                      href={link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="client-portal__pay-button"
-                    >
-                      💰 Quitar dívida ({formatCents(loan.outstandingCents)})
-                    </a>
-                  ) : (
-                    <p className="client-portal__state">
-                      Pra quitar ou pagar, fale diretamente com{" "}
-                      {tenantName ?? "quem te emprestou"}.
-                    </p>
-                  );
-                })()}
+                {loan.outstandingCents > 0 &&
+                  loan.status !== "cancelled" &&
+                  loan.status !== "settled" &&
+                  (() => {
+                    const link = whatsappLink(
+                      tenantWhatsapp,
+                      `Oi! Quero quitar meu empréstimo. Saldo em aberto: ${formatCents(
+                        loan.outstandingCents,
+                      )}.`,
+                    );
+                    return link ? (
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="client-portal__pay-button"
+                      >
+                        💰 Quitar dívida ({formatCents(loan.outstandingCents)})
+                      </a>
+                    ) : (
+                      <p className="client-portal__state">
+                        Pra quitar ou pagar, fale diretamente com{" "}
+                        {tenantName ?? "quem te emprestou"}.
+                      </p>
+                    );
+                  })()}
 
-              <div className="loan-card__installments">
-                {loan.installments.map((installment) => {
-                  const emAberto =
-                    installment.status !== "paid" &&
-                    installment.status !== "cancelled";
-                  const saldoParcela = Math.max(
-                    0,
-                    installment.totalCents - installment.paidCents,
-                  );
-                  const linkParcela = emAberto
-                    ? whatsappLink(
-                        tenantWhatsapp,
-                        `Oi! Quero pagar a parcela ${
-                          installment.sequenceNumber
-                        } (vencimento ${formatDate(
-                          installment.dueDate,
-                        )}), valor ${formatCents(saldoParcela)}.`,
-                      )
-                    : null;
-                  return (
-                    <div
-                      key={installment.sequenceNumber}
-                      className="installment-row"
-                    >
-                      <span>
-                        Parcela {installment.sequenceNumber} ·{" "}
-                        {formatDate(installment.dueDate)}
-                      </span>
-                      <span>{formatCents(installment.totalCents)}</span>
-                      {linkParcela ? (
-                        <a
-                          href={linkParcela}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={`installment-row__status installment-row__status--pay${
-                            installment.status === "overdue"
-                              ? " installment-row__status--overdue"
-                              : ""
-                          }`}
-                        >
-                          {installment.status === "overdue"
-                            ? "⏰ Atrasada · Pagar"
-                            : "Pagar"}
-                        </a>
-                      ) : (
-                        <span
-                          className={`installment-row__status${
-                            installment.status === "paid"
-                              ? " installment-row__status--paid"
-                              : ""
-                          }`}
-                        >
-                          {INSTALLMENT_STATUS_LABEL[installment.status] ??
-                            installment.status}
+                <div className="loan-card__installments">
+                  {loan.installments.map((installment) => {
+                    const emAberto =
+                      installment.status !== "paid" &&
+                      installment.status !== "cancelled";
+                    const saldoParcela = Math.max(
+                      0,
+                      installment.totalCents - installment.paidCents,
+                    );
+                    const linkParcela = emAberto
+                      ? whatsappLink(
+                          tenantWhatsapp,
+                          `Oi! Quero pagar a parcela ${
+                            installment.sequenceNumber
+                          } (vencimento ${formatDate(
+                            installment.dueDate,
+                          )}), valor ${formatCents(saldoParcela)}.`,
+                        )
+                      : null;
+                    return (
+                      <div
+                        key={installment.sequenceNumber}
+                        className="installment-row"
+                      >
+                        <span>
+                          Parcela {installment.sequenceNumber} ·{" "}
+                          {formatDate(installment.dueDate)}
                         </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
+                        <span>{formatCents(installment.totalCents)}</span>
+                        {linkParcela ? (
+                          <a
+                            href={linkParcela}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`installment-row__status installment-row__status--pay${
+                              installment.status === "overdue"
+                                ? " installment-row__status--overdue"
+                                : ""
+                            }`}
+                          >
+                            {installment.status === "overdue"
+                              ? "⏰ Atrasada · Pagar"
+                              : "Pagar"}
+                          </a>
+                        ) : (
+                          <span
+                            className={`installment-row__status${
+                              installment.status === "paid"
+                                ? " installment-row__status--paid"
+                                : ""
+                            }`}
+                          >
+                            {INSTALLMENT_STATUS_LABEL[installment.status] ??
+                              installment.status}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
             );
           })}
       </div>

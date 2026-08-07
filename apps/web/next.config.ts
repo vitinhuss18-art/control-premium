@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const supabaseOrigin = new URL(
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    "https://ymayqjphgwvxekgxxolt.supabase.co",
+).origin;
+const supabaseWebsocketOrigin = supabaseOrigin.replace(/^http/, "ws");
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
@@ -21,7 +27,24 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' blob: data: https:",
+              `connect-src 'self' ${supabaseOrigin} ${supabaseWebsocketOrigin}`,
+              "font-src 'self' data:",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
+          { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",

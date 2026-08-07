@@ -790,9 +790,10 @@
   }
   window.__controlPremiumSupabaseInit = true;
 
-  // Configuração do Supabase - usar variáveis de ambiente
-  var SUPABASE_URL = localStorage.getItem('SUPABASE_URL') || 'https://ymayqjphgwvxekgxxolt.supabase.co';
-  var SUPABASE_KEY = localStorage.getItem('SUPABASE_KEY') || 'sb_publishable_l3fdH2Nd_U2CyRvS1GFhkw_g3ceVXxh';
+  // Chave publicável do Supabase. Não aceite substituição via localStorage:
+  // isso poderia ligar a interface de produção ao projeto errado no navegador.
+  var SUPABASE_URL = 'https://ymayqjphgwvxekgxxolt.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_l3fdH2Nd_U2CyRvS1GFhkw_g3ceVXxh';
 
   var supabaseClient = null;
   try {
@@ -816,7 +817,7 @@
         console.log('⚠ Nenhum usuário autenticado');
         return null;
       }
-      console.log('✓ Usuário autenticado:', data.session.user.email);
+      console.log('✓ Usuário autenticado');
       const { data: profile, error } = await supabaseClient
         .from('profiles')
         .select('tenant_id, full_name, role')
@@ -865,7 +866,7 @@
       metadata: { chave_pix: chavePix || null, endereco: endereco || null, regiao: regiao || null }
     });
     if (error) throw error;
-    console.log('✓ Cliente sincronizado com Supabase:', nome);
+    console.log('✓ Cliente sincronizado com Supabase');
   };
 })();
 </script>
@@ -2573,7 +2574,7 @@ async function enviarLinkWhatsApp() {
 
   const { data: sessao } = await window.supabaseClient.auth.getSession();
   if (!sessao.session) {
-    alert('⚠ Você precisa estar autenticado com uma conta de administrador (login real, não o login por CPF) para gerar um link de cadastro válido. Essa etapa ainda está sendo construída.');
+    alert('⚠ Sua sessão de administrador expirou. Entre novamente para gerar um link de cadastro.');
     return;
   }
 
@@ -3764,15 +3765,19 @@ function init() {
         console.error('⚠ Erro ao verificar sessão/perfil do assinante:', e);
       }
       try {
-        const papeisComPainel = ['super_admin', 'admin', 'manager'];
-        if (auth && auth.session && auth.profile && papeisComPainel.includes(auth.profile.role)) {
+        if (auth && auth.session && auth.profile && auth.profile.role === 'super_admin') {
+          window.location.replace('/owner');
+          return;
+        }
+        const papeisComPainel = ['admin', 'manager'];
+        if (auth && auth.session && auth.profile && auth.profile.tenant_id && papeisComPainel.includes(auth.profile.role)) {
           // Sessão real do Supabase (veio do login novo /assinante) — pula a
           // tela de CPF+WhatsApp e entra direto no dashboard.
           perfilAtual = 'admin';
           usuarioAtual = {
             nome: auth.profile.full_name || auth.session.user.email,
             perfil: 'admin',
-            assinanteId: auth.profile.tenant_id || 'demo1',
+            assinanteId: auth.profile.tenant_id,
             real: true,
             email: auth.session.user.email
           };
@@ -3785,8 +3790,13 @@ function init() {
           }
           carregarClientesReais().catch(e => console.warn('⚠ Falha ao carregar clientes reais:', e.message));
           carregarDashboardReal().catch(e => console.warn('⚠ Falha ao carregar dashboard real:', e.message));
-        } else {
+        } else if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+          // O login antigo com dados de demonstração fica disponível somente
+          // no desenvolvimento local. Em produção, todo acesso passa pela
+          // autenticação real da página inicial.
           show('login');
+        } else {
+          window.location.replace('/');
         }
       } catch (e) {
         console.error('⚠ Erro ao decidir tela pós-login, indo pra tela de login:', e);

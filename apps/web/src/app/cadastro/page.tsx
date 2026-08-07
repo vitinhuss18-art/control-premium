@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import "./cadastro.css";
 
 type PhotoKey = "foto" | "docFrente" | "docVerso" | "fachada";
@@ -11,6 +12,7 @@ type PhotoState = {
 };
 
 const EMPTY_PHOTO: PhotoState = { file: null, preview: null };
+const MAX_PHOTO_BYTES = 900 * 1024;
 
 function maskCpf(value: string): string {
   const d = value.replace(/\D/g, "").slice(0, 11);
@@ -35,32 +37,40 @@ function maskPhone(value: string): string {
 // serverless (não dá pra configurar, nem em plano pago). Fotos tiradas
 // direto da câmera do celular (RG, casa, selfie) facilmente passam disso
 // sem compressão -- por isso comprimimos no navegador antes de enviar.
-async function compressImage(
-  file: File,
-  maxDimension = 1600,
-  quality = 0.72,
-): Promise<File> {
+async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
   try {
     const bitmap = await createImageBitmap(file);
-    let { width, height } = bitmap;
-    if (width > maxDimension || height > maxDimension) {
-      const scale = maxDimension / Math.max(width, height);
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
+    const attempts = [
+      { maxDimension: 1440, quality: 0.7 },
+      { maxDimension: 1200, quality: 0.6 },
+      { maxDimension: 960, quality: 0.5 },
+    ];
+    let smallest = file;
+    for (const attempt of attempts) {
+      const scale = Math.min(
+        1,
+        attempt.maxDimension / Math.max(bitmap.width, bitmap.height),
+      );
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return smallest;
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", attempt.quality),
+      );
+      if (!blob) continue;
+      const candidate = new File(
+        [blob],
+        `${file.name.replace(/\.\w+$/, "")}.jpg`,
+        { type: "image/jpeg" },
+      );
+      if (candidate.size < smallest.size) smallest = candidate;
+      if (candidate.size <= MAX_PHOTO_BYTES) return candidate;
     }
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality),
-    );
-    if (!blob) return file;
-    const newName = file.name.replace(/\.\w+$/, "") + ".jpg";
-    return new File([blob], newName, { type: "image/jpeg" });
+    return smallest;
   } catch {
     // se a compressão falhar por qualquer motivo (formato exótico, etc.),
     // segue com o arquivo original -- o check de tamanho abaixo ainda protege.
@@ -96,6 +106,7 @@ export default function CadastroPage() {
     docVerso: EMPTY_PHOTO,
     fachada: EMPTY_PHOTO,
   });
+  const photosRef = useRef(photos);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +114,19 @@ export default function CadastroPage() {
     typeof window === "undefined"
       ? null
       : new URLSearchParams(window.location.search).get("token"),
+  );
+
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
+
+  useEffect(
+    () => () => {
+      Object.values(photosRef.current).forEach(({ preview }) => {
+        if (preview) URL.revokeObjectURL(preview);
+      });
+    },
+    [],
   );
 
   function update<K extends keyof typeof form>(key: K, value: string) {
@@ -116,13 +140,16 @@ export default function CadastroPage() {
     const input = e.target;
     const file = input.files?.[0] ?? null;
     if (!file) {
-      setPhotos((prev) => ({ ...prev, [key]: EMPTY_PHOTO }));
+      setPhotos((prev) => {
+        if (prev[key].preview) URL.revokeObjectURL(prev[key].preview);
+        return { ...prev, [key]: EMPTY_PHOTO };
+      });
       return;
     }
     const compressed = await compressImage(file);
     // limite por foto pensado pra 4 fotos + campos de texto caberem dentro
     // do limite de ~4.5 MB por requisição da Vercel (ver compressImage acima)
-    if (compressed.size > 3 * 1024 * 1024) {
+    if (compressed.size > MAX_PHOTO_BYTES) {
       setError(
         "Essa foto ficou grande demais mesmo após compressão. Tente tirar outra com menos zoom/qualidade.",
       );
@@ -130,7 +157,10 @@ export default function CadastroPage() {
       return;
     }
     const preview = URL.createObjectURL(compressed);
-    setPhotos((prev) => ({ ...prev, [key]: { file: compressed, preview } }));
+    setPhotos((prev) => {
+      if (prev[key].preview) URL.revokeObjectURL(prev[key].preview);
+      return { ...prev, [key]: { file: compressed, preview } };
+    });
   }
 
   function validate(): string | null {
@@ -404,7 +434,14 @@ function PhotoUpload({
       <label htmlFor={id}>{label}</label>
       <div className="cp-photo-box">
         {state.preview ? (
-          <img src={state.preview} alt={label} className="cp-photo-preview" />
+          <Image
+            src={state.preview}
+            alt={label}
+            fill
+            sizes="(max-width: 640px) 100vw, 560px"
+            unoptimized
+            className="cp-photo-preview"
+          />
         ) : (
           <span className="cp-photo-placeholder">📷</span>
         )}

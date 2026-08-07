@@ -8,10 +8,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // O navegador nunca decide sozinho quem ele é: só apresenta o cookie, que só
 // o servidor consegue emitir e validar.
 //
-// O segredo usado pra assinar é derivado da SUPABASE_SERVICE_ROLE_KEY (que já
-// é secreta e só existe no servidor) para não depender de mais uma variável
-// de ambiente nova. Se um dia Victor quiser trocar a service_role key, as
-// sessões antigas simplesmente expiram/invalidam sozinhas — sem drama.
+// O segredo de sessão é independente da chave administrativa do banco. O
+// fallback mantém instalações antigas funcionando até CLIENT_SESSION_SECRET
+// ser cadastrado, sem expor nenhum segredo ao navegador.
 
 export const CLIENT_SESSION_COOKIE = "cp_client_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12; // 12 horas
@@ -25,11 +24,12 @@ export type ClientSessionPayload = {
 };
 
 function getSecret(): string {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada no servidor.");
+  const secret =
+    process.env.CLIENT_SESSION_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret || secret.length < 32) {
+    throw new Error("Segredo da sessão do cliente não configurado.");
   }
-  return serviceKey;
+  return secret;
 }
 
 function base64UrlEncode(input: string): string {
@@ -42,7 +42,8 @@ function base64UrlEncode(input: string): string {
 
 function base64UrlDecode(input: string): string {
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
+  const pad =
+    padded.length % 4 === 0 ? "" : "=".repeat(4 - (padded.length % 4));
   return Buffer.from(padded + pad, "base64").toString("utf8");
 }
 
@@ -85,11 +86,16 @@ export function verifyClientSessionToken(
     return null;
   }
   try {
-    const payload = JSON.parse(base64UrlDecode(payloadEncoded)) as ClientSessionPayload;
+    const payload = JSON.parse(
+      base64UrlDecode(payloadEncoded),
+    ) as ClientSessionPayload;
     if (
       typeof payload.clientId !== "string" ||
       typeof payload.tenantId !== "string" ||
-      typeof payload.exp !== "number"
+      typeof payload.fullName !== "string" ||
+      typeof payload.status !== "string" ||
+      typeof payload.exp !== "number" ||
+      !Number.isFinite(payload.exp)
     ) {
       return null;
     }

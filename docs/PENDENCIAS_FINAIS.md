@@ -27,7 +27,10 @@ Este arquivo reúne somente ações que o Codex não pode concluir sem uma conta
 
 - registrar ou conectar o domínio;
 - conectar um projeto Supabase por titular elegível ou responsável autorizado;
-- aplicar as migrações versionadas e executar o teste real de isolamento multiempresa;
+- manter as próximas migrações versionadas e executar o teste real de isolamento
+  multiempresa; `202608050001_atomic_client_proposal.sql` foi aplicada e verificada em
+  06/08/2026;
+- cadastrar `CLIENT_SESSION_SECRET` com pelo menos 32 caracteres no cofre da hospedagem;
 - configurar e-mail/SMS de confirmação, recuperação de senha, sessões e MFA no Supabase Auth;
 - executar e comprovar um teste real de backup e restauração em ambiente isolado;
 - conectar hospedagem e provedor de e-mail;
