@@ -868,6 +868,10 @@ a {
   border-radius: 16px;
 }
 
+.owner-cards {
+  display: none;
+}
+
 .owner-table {
   width: 100%;
   border-collapse: collapse;
@@ -1003,6 +1007,7 @@ a {
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
+  touch-action: manipulation;
 }
 
 .owner-action-btn:hover {
@@ -1032,6 +1037,27 @@ a {
 .owner-action-stack {
   display: flex;
   gap: 6px;
+}
+
+.owner-company-button {
+  max-width: 240px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f7f5ed;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: rgba(231, 189, 86, 0.45);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.owner-company-button:hover,
+.owner-company-button:focus-visible {
+  color: #e7bd56;
 }
 
 .owner-row-note {
@@ -1233,6 +1259,11 @@ a {
   margin-top: 18px;
 }
 
+.owner-modal-feedback {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
 .owner-management-note textarea {
   resize: vertical;
   min-height: 82px;
@@ -1259,6 +1290,105 @@ a {
 }
 
 @media (max-width: 620px) {
+  .owner-shell {
+    padding: 20px 16px 32px;
+  }
+
+  .owner-table-wrap {
+    display: none;
+  }
+
+  .owner-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .owner-card {
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 65%),
+      #10110f;
+  }
+
+  .owner-card-suspended {
+    border-color: rgba(229, 120, 107, 0.35);
+  }
+
+  .owner-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .owner-company-button-card {
+    max-width: none;
+    font-size: 17px;
+  }
+
+  .owner-card-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .owner-card-summary span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #74736d;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .owner-card-summary b {
+    color: #f7f5ed;
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .owner-card-summary b.owner-overdue {
+    color: #e5786b;
+  }
+
+  .owner-card-note {
+    margin: 14px 0 0;
+    color: #e7bd56;
+    font-size: 12px;
+  }
+
+  .owner-card-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .owner-card-actions .owner-action-btn {
+    min-height: 44px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .owner-card-empty {
+    padding: 24px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+  }
+
+  .owner-modal-backdrop {
+    padding: 10px;
+  }
+
+  .owner-modal {
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+  }
+
   .owner-management-grid {
     grid-template-columns: 1fr;
   }

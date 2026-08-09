@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Row = {
   tenant_id: string;
@@ -91,6 +91,7 @@ export default function OwnerDashboardPage() {
   const [pendingManagementAction, setPendingManagementAction] = useState<
     "subscription" | "free_days" | null
   >(null);
+  const managementNoteRef = useRef<HTMLTextAreaElement | null>(null);
 
   const supabase = useMemo<SupabaseClient | null>(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -235,6 +236,7 @@ export default function OwnerDashboardPage() {
     const note = managementNote.trim();
     if (!note) {
       setActionError("Informe o motivo da alteração.");
+      requestAnimationFrame(() => managementNoteRef.current?.focus());
       return null;
     }
     if (note.length > 500) {
@@ -385,7 +387,7 @@ export default function OwnerDashboardPage() {
         <span className="owner-brand">
           Control$ <b>Premium</b> · Painel do dono
         </span>
-        <button className="owner-logout" onClick={sair}>
+        <button className="owner-logout" type="button" onClick={sair}>
           Sair
         </button>
       </div>
@@ -394,7 +396,11 @@ export default function OwnerDashboardPage() {
         <div className="owner-error">Configuração indisponível.</div>
       )}
       {error && <div className="owner-error">{error}</div>}
-      {actionError && <div className="owner-error">{actionError}</div>}
+      {actionError && !managedRow && (
+        <div className="owner-error" role="alert">
+          {actionError}
+        </div>
+      )}
       {actionSuccess && <div className="owner-success">{actionSuccess}</div>}
       {supabase && !error && !rows && (
         <div className="owner-loading">Carregando assinantes...</div>
@@ -548,7 +554,15 @@ export default function OwnerDashboardPage() {
                   .join(" ");
                 return (
                   <tr key={row.tenant_id} className={rowClasses || undefined}>
-                    <td>{row.company_name}</td>
+                    <td>
+                      <button
+                        className="owner-company-button"
+                        type="button"
+                        onClick={() => abrirGerenciamento(row)}
+                      >
+                        {row.company_name}
+                      </button>
+                    </td>
                     <td>{row.admin_full_name ?? "—"}</td>
                     <td>{row.admin_email ?? "—"}</td>
                     <td>{row.plan_name ?? "—"}</td>
@@ -604,6 +618,7 @@ export default function OwnerDashboardPage() {
                       <div className="owner-action-stack">
                         <button
                           className="owner-action-btn owner-action-btn-primary"
+                          type="button"
                           disabled={pendingTenantId === row.tenant_id}
                           onClick={() => abrirGerenciamento(row)}
                         >
@@ -616,6 +631,7 @@ export default function OwnerDashboardPage() {
                                 ? "owner-action-btn owner-action-btn-positive"
                                 : "owner-action-btn owner-action-btn-danger"
                             }
+                            type="button"
                             disabled={pendingTenantId === row.tenant_id}
                             onClick={() => alternarStatusTenant(row)}
                           >
@@ -642,6 +658,118 @@ export default function OwnerDashboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {filteredRows && (
+        <div className="owner-cards">
+          {filteredRows.map((row) => {
+            const daysLeft = trialDaysLeft(row.trial_ends_at);
+            const trialExpired =
+              row.subscription_status === "trialing" &&
+              daysLeft !== null &&
+              daysLeft < 0;
+            const hasOverdue = row.overdue_installments_count > 0;
+
+            return (
+              <article
+                key={row.tenant_id}
+                className={
+                  row.tenant_status === "suspended"
+                    ? "owner-card owner-card-suspended"
+                    : "owner-card"
+                }
+              >
+                <div className="owner-card-header">
+                  <button
+                    className="owner-company-button owner-company-button-card"
+                    type="button"
+                    onClick={() => abrirGerenciamento(row)}
+                  >
+                    {row.company_name}
+                  </button>
+                  <span
+                    className={`owner-tenant-status owner-tenant-status-${row.tenant_status}`}
+                  >
+                    {tenantStatusLabel[row.tenant_status] ?? row.tenant_status}
+                  </span>
+                </div>
+
+                <div className="owner-card-summary">
+                  <span>
+                    Plano <b>{row.plan_name ?? "Sem plano"}</b>
+                  </span>
+                  <span>
+                    Assinatura{" "}
+                    <b>
+                      {row.subscription_status
+                        ? (statusLabel[row.subscription_status] ??
+                          row.subscription_status)
+                        : "Sem assinatura"}
+                    </b>
+                  </span>
+                  <span>
+                    Clientes <b>{row.client_count}</b>
+                  </span>
+                  <span>
+                    Em atraso{" "}
+                    <b className={hasOverdue ? "owner-overdue" : undefined}>
+                      {hasOverdue
+                        ? `${row.overdue_installments_count} · ${formatMoney(row.overdue_amount_cents)}`
+                        : "Nenhum"}
+                    </b>
+                  </span>
+                </div>
+
+                {(trialExpired ||
+                  (row.subscription_status === "trialing" &&
+                    daysLeft !== null)) && (
+                  <p className="owner-card-note">
+                    {trialExpired
+                      ? "Período grátis vencido"
+                      : `Período grátis: ${daysLeft} dia(s) restante(s)`}
+                  </p>
+                )}
+
+                <div className="owner-card-actions">
+                  <button
+                    className="owner-action-btn owner-action-btn-primary"
+                    type="button"
+                    disabled={pendingTenantId === row.tenant_id}
+                    onClick={() => abrirGerenciamento(row)}
+                  >
+                    Gerenciar plano e cortesia
+                  </button>
+                  {row.tenant_status !== "archived" && (
+                    <button
+                      className={
+                        row.tenant_status === "suspended"
+                          ? "owner-action-btn owner-action-btn-positive"
+                          : "owner-action-btn owner-action-btn-danger"
+                      }
+                      type="button"
+                      disabled={pendingTenantId === row.tenant_id}
+                      onClick={() => alternarStatusTenant(row)}
+                    >
+                      {pendingTenantId === row.tenant_id
+                        ? "Processando..."
+                        : row.tenant_status === "suspended"
+                          ? "Reativar acesso"
+                          : "Suspender acesso"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+
+          {filteredRows.length === 0 && (
+            <div className="owner-empty owner-card-empty">
+              {rows && rows.length > 0
+                ? "Nenhum assinante corresponde à busca/filtro."
+                : "Nenhum assinante ainda."}
+            </div>
+          )}
         </div>
       )}
 
@@ -686,6 +814,29 @@ export default function OwnerDashboardPage() {
                 Dias grátis até: <b>{formatDate(managedRow.trial_ends_at)}</b>
               </span>
             </div>
+
+            {actionError && (
+              <div className="owner-error owner-modal-feedback" role="alert">
+                {actionError}
+              </div>
+            )}
+
+            <label className="owner-management-note">
+              Motivo da alteração (obrigatório)
+              <textarea
+                ref={managementNoteRef}
+                maxLength={500}
+                rows={3}
+                placeholder="Ex.: cortesia comercial autorizada"
+                value={managementNote}
+                aria-invalid={Boolean(actionError && !managementNote.trim())}
+                onChange={(event) => {
+                  setManagementNote(event.target.value);
+                  if (actionError) setActionError(null);
+                }}
+              />
+              <span>{managementNote.length}/500</span>
+            </label>
 
             <div className="owner-management-section">
               <h3>Plano e status</h3>
@@ -775,17 +926,6 @@ export default function OwnerDashboardPage() {
               </button>
             </div>
 
-            <label className="owner-management-note">
-              Motivo da alteração (obrigatório)
-              <textarea
-                maxLength={500}
-                rows={3}
-                placeholder="Ex.: cortesia comercial autorizada"
-                value={managementNote}
-                onChange={(event) => setManagementNote(event.target.value)}
-              />
-              <span>{managementNote.length}/500</span>
-            </label>
             <p className="owner-management-audit">
               Todas as ações ficam registradas na auditoria com usuário, data,
               valores anteriores e novos.
