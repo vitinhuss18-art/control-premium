@@ -335,12 +335,12 @@
     margin-bottom: 4px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-  .form-group input, .form-group select {
+  .form-group input, .form-group select, .form-group textarea {
     width: 100%; background: var(--surface); border: 1px solid var(--divider);
     border-radius: var(--radius-sm); padding: 11px 14px; color: #fff;
     font-size: 13px; outline: none; transition: var(--transition);
   }
-  .form-group input:focus, .form-group select:focus {
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,215,0,0.06);
   }
 
@@ -705,6 +705,43 @@
   .chip-select.on {
     background: rgba(255,215,0,0.1); border-color: var(--primary);
     color: var(--primary);
+  }
+
+  .sales-summary {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px; margin-bottom: 14px;
+  }
+  .sales-summary .card { margin: 0; padding: 12px; }
+  .sales-summary .label { color: var(--grey2); font-size: 9.5px; }
+  .sales-summary .value {
+    margin-top: 4px; color: var(--primary); font-size: 14px; font-weight: 800;
+  }
+  .sale-photo-preview {
+    display: none; width: 100%; max-height: 170px; margin-top: 8px;
+    border: 1px solid var(--divider); border-radius: 12px; object-fit: cover;
+  }
+  .sale-card {
+    display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 11px;
+    margin-bottom: 10px; padding: 11px; border: 1px solid var(--divider);
+    border-radius: 12px; background: rgba(255,255,255,0.02);
+  }
+  .sale-card .photo {
+    width: 70px; height: 70px; display: grid; place-items: center;
+    overflow: hidden; border-radius: 10px; background: var(--surface2);
+    color: var(--primary); font-size: 26px;
+  }
+  .sale-card .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .sale-card .name { font-size: 12.5px; font-weight: 800; }
+  .sale-card .meta { margin-top: 3px; color: var(--grey2); font-size: 10px; }
+  .sale-card .amount {
+    margin-top: 7px; color: var(--primary); font-size: 12px; font-weight: 800;
+  }
+  @media (max-width: 420px) {
+    .sales-summary { grid-template-columns: 1fr; }
+    .sales-summary .card {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sales-summary .value { margin-top: 0; }
   }
 
   .client-item {
@@ -1080,6 +1117,68 @@
       <button class="btn-glow" style="margin-top:10px;" onclick="confirmarContrato()">✅ Confirmar e liberar empréstimo</button>
       <div id="parcelasResultado" style="margin-top:14px;"></div>
     </div>
+  </div>
+
+  <!-- VENDAS PARCELADAS -->
+  <div class="screen nav-space" id="vendas">
+    <div class="appbar">
+      <button class="menu-btn" onclick="abrirMenu()">☰</button>
+      <span class="appbar-title">Vendas parceladas</span>
+      <button class="notif-btn" onclick="abrirNotificacoes()">🔔<span class="notif-badge"></span></button>
+    </div>
+
+    <div class="sales-summary" aria-label="Resumo das vendas parceladas">
+      <div class="card"><div class="label">Vendas ativas</div><div class="value" id="vendasAtivas">0</div></div>
+      <div class="card"><div class="label">Total vendido</div><div class="value" id="vendasTotal">R$ 0,00</div></div>
+      <div class="card"><div class="label">Saldo a receber</div><div class="value" id="vendasReceber">R$ 0,00</div></div>
+    </div>
+
+    <div class="card card-glow">
+      <div class="section-title" style="margin-top:0;">🛍️ Registrar nova venda</div>
+      <div style="color:var(--grey2);font-size:10.5px;margin-bottom:12px;">Cadastre o produto, defina entrada, juros e parcelas. A cobrança usa o mesmo controle seguro das demais operações.</div>
+
+      <div class="form-group"><label>Cliente aprovado *</label><select id="vendaCliente"><option value="">Selecione um cliente</option></select></div>
+      <div class="form-group"><label>Nome do produto *</label><input id="vendaProduto" placeholder="Ex: Geladeira duplex" maxlength="120"></div>
+      <div class="form-group"><label>Descrição</label><textarea id="vendaDescricao" placeholder="Modelo, cor, estado e observações" maxlength="500" rows="3"></textarea></div>
+      <div class="form-group">
+        <label>Foto do produto</label>
+        <input id="vendaFoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewFotoVenda(this)">
+        <img id="vendaFotoPreview" class="sale-photo-preview" alt="Prévia da foto do produto">
+        <div style="color:var(--grey2);font-size:9.5px;margin-top:5px;">Opcional · JPG, PNG ou WebP · até 5 MB</div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group"><label>Preço da venda (R$) *</label><input id="vendaPreco" type="number" min="0.01" step="0.01" placeholder="Ex: 2500" oninput="calcularPreviewVenda()"></div>
+        <div class="form-group"><label>Entrada (R$)</label><input id="vendaEntrada" type="number" min="0" step="0.01" value="0" oninput="calcularPreviewVenda()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Frequência</label>
+          <select id="vendaFrequencia" onchange="calcularPreviewVenda()">
+            <option value="daily">Diária</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly" selected>Mensal</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Parcelas *</label><input id="vendaParcelas" type="number" min="1" max="360" value="4" oninput="calcularPreviewVenda()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Modalidade de juros</label>
+          <select id="vendaJurosModo" onchange="calcularPreviewVenda()">
+            <option value="total" selected>% total do contrato</option>
+            <option value="parcela">% por parcela</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Juros (%) *</label><input id="vendaJuros" type="number" min="0" step="0.1" value="20" oninput="calcularPreviewVenda()"></div>
+      </div>
+
+      <div id="vendaPreview" class="card" style="background:var(--surface2);margin:8px 0 12px;padding:12px;"></div>
+      <button id="vendaSalvar" class="btn-primary" style="width:100%;" onclick="criarVendaParcelada()">✅ Registrar venda parcelada</button>
+      <div id="vendaResultado" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="section-title">📦 Vendas registradas</div>
+    <div id="listaVendasParceladas"><div style="padding:16px;text-align:center;color:var(--grey2);font-size:11px;">Abra esta aba para carregar as vendas.</div></div>
   </div>
 
   <!-- AGENDA -->
@@ -1678,6 +1777,7 @@ const menuPorPerfil = {
     { id: 'cadastrar', ic: '➕', label: 'Cadastrar' },
     { id: 'renovacoes', ic: '💸', label: 'Propostas' },
     { id: 'contratos', ic: '📄', label: 'Contratos' },
+    { id: 'vendas', ic: '🛍️', label: 'Vendas parceladas' },
     { id: 'agenda', ic: '📅', label: 'Agenda' },
     { id: 'ia', ic: '🤖', label: 'IA Assistente' },
     { id: 'painel', ic: '⚙', label: 'Configurações' },
@@ -1726,6 +1826,7 @@ function show(id) {
   if (nav) nav.classList.toggle('show', perfilAtual === 'admin' && id !== 'login');
   if (id === 'dashboard') { atualizarDashboard(); carregarDashboardReal().catch(e => console.warn('⚠ Falha ao recarregar dashboard real:', e.message)); }
   if (id === 'contratos') renderizarSelectClienteContrato();
+  if (id === 'vendas') carregarVendasParceladas().catch(e => console.warn('⚠ Falha ao carregar vendas:', e.message));
   if (id === 'renovacoes') carregarPropostasExternas();
   if (id === 'painel') preencherFormAssinante();
 }
@@ -2383,6 +2484,294 @@ async function criarEmprestimoManual(clientId) {
 }
 
 
+function escaparHtmlVenda(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function obterConfiguracaoVenda() {
+  const salePriceCents = Math.round(parseNumeroBR(document.getElementById('vendaPreco')?.value) * 100);
+  const downPaymentCents = Math.round(parseNumeroBR(document.getElementById('vendaEntrada')?.value) * 100);
+  const installmentCount = Number.parseInt(document.getElementById('vendaParcelas')?.value, 10);
+  const interestPercent = Number.parseFloat(document.getElementById('vendaJuros')?.value);
+  const interestMode = document.getElementById('vendaJurosModo')?.value;
+  const frequency = document.getElementById('vendaFrequencia')?.value;
+
+  if (!Number.isSafeInteger(salePriceCents) || salePriceCents <= 0) {
+    throw new Error('Informe um preço de venda válido.');
+  }
+  if (!Number.isSafeInteger(downPaymentCents) || downPaymentCents < 0) {
+    throw new Error('A entrada não pode ser negativa.');
+  }
+  if (downPaymentCents >= salePriceCents) {
+    throw new Error('A entrada deve ser menor que o preço da venda.');
+  }
+  if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 360) {
+    throw new Error('Escolha de 1 a 360 parcelas.');
+  }
+  if (!Number.isFinite(interestPercent) || interestPercent < 0) {
+    throw new Error('Informe uma taxa de juros válida.');
+  }
+
+  const periodicInterestPercent = interestMode === 'total' ? interestPercent / installmentCount : interestPercent;
+  const periodicInterestBps = Math.round(periodicInterestPercent * 100);
+  if (periodicInterestBps < 0 || periodicInterestBps > 10000) {
+    throw new Error('A taxa deve ficar entre 0% e 100% por parcela.');
+  }
+
+  const financedCents = salePriceCents - downPaymentCents;
+  const interestCents = Math.round(financedCents * periodicInterestBps * installmentCount / 10000);
+  const totalCents = financedCents + interestCents;
+
+  return {
+    salePriceCents,
+    downPaymentCents,
+    financedCents,
+    installmentCount,
+    periodicInterestBps,
+    totalCents,
+    installmentCents: totalCents / installmentCount,
+    frequency,
+  };
+}
+
+function calcularPreviewVenda() {
+  const preview = document.getElementById('vendaPreview');
+  if (!preview) return;
+
+  const precoDigitado = document.getElementById('vendaPreco')?.value;
+  if (!precoDigitado) {
+    preview.innerHTML = '<span style="color:var(--grey2);font-size:11px;">Preencha o preço para simular a venda.</span>';
+    return;
+  }
+
+  try {
+    const config = obterConfiguracaoVenda();
+    preview.innerHTML = `
+      <div style="display:flex;justify-content:space-between;"><span>Preço da venda:</span><b>${fmtMoney(config.salePriceCents / 100)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>Entrada:</span><b>${fmtMoney(config.downPaymentCents / 100)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>Valor financiado:</span><b>${fmtMoney(config.financedCents / 100)}</b></div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px;"><span>Total das parcelas:</span><b style="color:var(--primary);">${fmtMoney(config.totalCents / 100)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>${config.installmentCount}x de:</span><b>${fmtMoney(config.installmentCents / 100)}</b></div>
+    `;
+  } catch (e) {
+    preview.innerHTML = `<span style="color:var(--error);font-size:11px;">⚠ ${escaparHtmlVenda(e.message)}</span>`;
+  }
+}
+
+function previewFotoVenda(input) {
+  const preview = document.getElementById('vendaFotoPreview');
+  const arquivo = input?.files?.[0];
+  if (!preview) return;
+
+  if (window.vendaFotoPreviewUrl) {
+    URL.revokeObjectURL(window.vendaFotoPreviewUrl);
+    window.vendaFotoPreviewUrl = '';
+  }
+  if (!arquivo) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    return;
+  }
+
+  const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!tiposPermitidos.includes(arquivo.type) || arquivo.size > 5 * 1024 * 1024) {
+    input.value = '';
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    document.getElementById('vendaResultado').innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Use uma imagem JPG, PNG ou WebP de até 5 MB.</div>';
+    return;
+  }
+
+  window.vendaFotoPreviewUrl = URL.createObjectURL(arquivo);
+  preview.src = window.vendaFotoPreviewUrl;
+  preview.style.display = 'block';
+  document.getElementById('vendaResultado').innerHTML = '';
+}
+
+async function uploadFotoProdutoVenda(session) {
+  const arquivo = document.getElementById('vendaFoto')?.files?.[0];
+  if (!arquivo) return null;
+
+  const tiposPermitidos = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  if (!tiposPermitidos[arquivo.type] || arquivo.size > 5 * 1024 * 1024) {
+    throw new Error('Use uma foto JPG, PNG ou WebP de até 5 MB.');
+  }
+
+  const { data: profile, error: profileError } = await window.supabaseClient
+    .from('profiles')
+    .select('tenant_id')
+    .eq('id', session.user.id)
+    .maybeSingle();
+  if (profileError || !profile?.tenant_id) {
+    throw new Error('Não foi possível identificar a empresa para salvar a foto.');
+  }
+
+  const caminho = `${profile.tenant_id}/sales/${crypto.randomUUID()}.${tiposPermitidos[arquivo.type]}`;
+  const { error: uploadError } = await window.supabaseClient.storage
+    .from('documents')
+    .upload(caminho, arquivo, { cacheControl: '3600', upsert: false });
+  if (uploadError) throw new Error(`Não foi possível enviar a foto: ${uploadError.message}`);
+  return caminho;
+}
+
+async function criarVendaParcelada() {
+  const resultado = document.getElementById('vendaResultado');
+  const botao = document.getElementById('vendaSalvar');
+  const clientId = document.getElementById('vendaCliente')?.value;
+  const productName = document.getElementById('vendaProduto')?.value.trim();
+  const productDescription = document.getElementById('vendaDescricao')?.value.trim();
+  let fotoEnviada = null;
+
+  if (!window.supabaseClient) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ O banco não está configurado.</div>';
+    return;
+  }
+  if (!clientId || !productName) {
+    resultado.innerHTML = '<div style="color:var(--error);font-size:11px;">⚠ Selecione o cliente e informe o produto.</div>';
+    return;
+  }
+
+  try {
+    const config = obterConfiguracaoVenda();
+    botao.disabled = true;
+    botao.textContent = 'Registrando venda...';
+    resultado.innerHTML = '<div style="color:var(--grey2);font-size:11px;">Salvando a operação e gerando as parcelas...</div>';
+
+    const { data: sessao } = await window.supabaseClient.auth.getSession();
+    const session = sessao?.session;
+    const token = session?.access_token;
+    if (!session || !token) throw new Error('Sessão expirada. Entre novamente com sua conta de administrador.');
+
+    fotoEnviada = await uploadFotoProdutoVenda(session);
+    const resp = await fetch('/api/admin/loans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        clientId,
+        operationType: 'installment_sale',
+        frequency: config.frequency,
+        installmentCount: config.installmentCount,
+        periodicInterestBps: config.periodicInterestBps,
+        firstDueDate: calcularPrimeiroVencimento(config.frequency),
+        productName,
+        productDescription: productDescription || undefined,
+        productPhotoPath: fotoEnviada || undefined,
+        salePriceCents: config.salePriceCents,
+        downPaymentCents: config.downPaymentCents,
+      }),
+    });
+    const vendaResult = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(vendaResult.message || 'Falha ao registrar a venda parcelada.');
+
+    resultado.innerHTML = '<div style="color:var(--primary);font-size:11px;">✅ Venda registrada e parcelas geradas com sucesso.</div>';
+    registrarAuditoria('Venda parcelada criada', `${productName} - ${fmtMoney(config.salePriceCents / 100)}`, { publico: 'admin', assinanteId: assinanteAtualId() });
+
+    document.getElementById('vendaProduto').value = '';
+    document.getElementById('vendaDescricao').value = '';
+    document.getElementById('vendaPreco').value = '';
+    document.getElementById('vendaEntrada').value = '0';
+    document.getElementById('vendaFoto').value = '';
+    previewFotoVenda(document.getElementById('vendaFoto'));
+    calcularPreviewVenda();
+    await carregarVendasParceladas();
+    carregarDashboardReal().catch(() => {});
+  } catch (e) {
+    if (fotoEnviada) {
+      await window.supabaseClient.storage.from('documents').remove([fotoEnviada]).catch(() => {});
+    }
+    resultado.innerHTML = `<div style="color:var(--error);font-size:11px;">⚠ ${escaparHtmlVenda(e.message)}</div>`;
+  } finally {
+    botao.disabled = false;
+    botao.textContent = '✅ Registrar venda parcelada';
+  }
+}
+
+async function carregarVendasParceladas() {
+  const lista = document.getElementById('listaVendasParceladas');
+  const seletor = document.getElementById('vendaCliente');
+  if (!lista || !seletor) return;
+
+  calcularPreviewVenda();
+  if (!window.supabaseClient) {
+    lista.innerHTML = '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:11px;">O banco ainda não está configurado.</div>';
+    return;
+  }
+
+  const { data: sessao } = await window.supabaseClient.auth.getSession();
+  if (!sessao?.session) {
+    lista.innerHTML = '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:11px;">Entre com sua conta de administrador para carregar as vendas.</div>';
+    return;
+  }
+
+  lista.innerHTML = '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:11px;">Carregando vendas...</div>';
+  const [clientesResp, vendasResp] = await Promise.all([
+    window.supabaseClient.from('clients').select('id, full_name').eq('status', 'approved').order('full_name'),
+    window.supabaseClient
+      .from('loans')
+      .select('id, client_id, product_name, product_description, product_photo_path, sale_price_cents, down_payment_cents, principal_cents, status, created_at, clients(full_name), installments!installments_loan_id_fkey(status, principal_cents, interest_cents, fee_cents, paid_cents)')
+      .eq('operation_type', 'installment_sale')
+      .order('created_at', { ascending: false }),
+  ]);
+
+  if (clientesResp.error) throw new Error(`Falha ao carregar clientes: ${clientesResp.error.message}`);
+  if (vendasResp.error) throw new Error(`Falha ao carregar vendas: ${vendasResp.error.message}`);
+
+  const clienteSelecionado = seletor.value;
+  seletor.innerHTML = '<option value="">Selecione um cliente</option>' + (clientesResp.data || []).map(cliente =>
+    `<option value="${escaparHtmlVenda(cliente.id)}">${escaparHtmlVenda(cliente.full_name)}</option>`
+  ).join('');
+  if ((clientesResp.data || []).some(cliente => cliente.id === clienteSelecionado)) seletor.value = clienteSelecionado;
+
+  const vendas = vendasResp.data || [];
+  const caminhosFoto = [...new Set(vendas.map(venda => venda.product_photo_path).filter(Boolean))];
+  const fotosAssinadas = {};
+  await Promise.all(caminhosFoto.map(async caminho => {
+    const { data } = await window.supabaseClient.storage.from('documents').createSignedUrl(caminho, 3600);
+    if (data?.signedUrl) fotosAssinadas[caminho] = data.signedUrl;
+  }));
+
+  const vendasValidas = vendas.filter(venda => venda.status !== 'cancelled');
+  const totalVendido = vendasValidas.reduce((soma, venda) => soma + (venda.sale_price_cents || 0), 0);
+  const saldoReceber = vendasValidas.reduce((soma, venda) => soma + (venda.installments || []).reduce((subtotal, parcela) => {
+    if (!['pending', 'partially_paid', 'overdue'].includes(parcela.status)) return subtotal;
+    return subtotal + (parcela.principal_cents || 0) + (parcela.interest_cents || 0) + (parcela.fee_cents || 0) - (parcela.paid_cents || 0);
+  }, 0), 0);
+
+  document.getElementById('vendasAtivas').textContent = vendas.filter(venda => venda.status === 'active').length;
+  document.getElementById('vendasTotal').textContent = fmtMoney(totalVendido / 100);
+  document.getElementById('vendasReceber').textContent = fmtMoney(saldoReceber / 100);
+
+  if (!vendas.length) {
+    lista.innerHTML = '<div style="padding:16px;text-align:center;color:var(--grey2);font-size:11px;">Nenhuma venda parcelada registrada.</div>';
+    return;
+  }
+
+  const statusVenda = { active: 'Ativa', paid: 'Quitada', completed: 'Quitada', cancelled: 'Cancelada' };
+  lista.innerHTML = vendas.map(venda => {
+    const cliente = Array.isArray(venda.clients) ? venda.clients[0] : venda.clients;
+    const fotoUrl = fotosAssinadas[venda.product_photo_path];
+    return `<div class="sale-card">
+      <div class="photo">${fotoUrl ? `<img src="${escaparHtmlVenda(fotoUrl)}" alt="Foto de ${escaparHtmlVenda(venda.product_name || 'produto')}">` : '📦'}</div>
+      <div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+          <div><div class="name">${escaparHtmlVenda(venda.product_name || 'Produto')}</div><div class="meta">${escaparHtmlVenda(cliente?.full_name || 'Cliente')}</div></div>
+          <span class="badge" style="background:rgba(255,215,0,0.12);color:var(--primary);">${escaparHtmlVenda(statusVenda[venda.status] || venda.status)}</span>
+        </div>
+        ${venda.product_description ? `<div class="meta" style="margin-top:7px;">${escaparHtmlVenda(venda.product_description)}</div>` : ''}
+        <div class="amount">${fmtMoney((venda.sale_price_cents || 0) / 100)}</div>
+        <div class="meta">Entrada: ${fmtMoney((venda.down_payment_cents || 0) / 100)} · Financiado: ${fmtMoney((venda.principal_cents || 0) / 100)}</div>
+        <div class="meta">${new Date(venda.created_at).toLocaleDateString('pt-BR')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
 // [SUPABASE] Busca os clientes reais (public.clients) do tenant logado e
 // atualiza a lista na aba Clientes.
 async function carregarClientesReais() {
@@ -2544,7 +2933,7 @@ async function abrirDetalheClienteReal(clientId) {
     window.supabaseClient.from('clients').select('id, full_name, phone, cpf, email, birth_date, status, created_at, metadata').eq('id', clientId).maybeSingle(),
     window.supabaseClient
       .from('loans')
-      .select('id, principal_cents, status, operation_type, created_at, installments!installments_loan_id_fkey(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
+      .select('id, principal_cents, status, operation_type, product_name, product_description, sale_price_cents, down_payment_cents, created_at, installments!installments_loan_id_fkey(id, sequence_number, due_date, status, principal_cents, interest_cents, fee_cents, paid_cents)')
       .eq('client_id', clientId)
       .order('created_at', { ascending: false }),
   ]);
@@ -2600,11 +2989,15 @@ async function abrirDetalheClienteReal(clientId) {
           <span>${fmtBRL(valor)}</span>
         </div>`;
       }).join('');
+      const produtoVenda = l.operation_type === 'installment_sale'
+        ? `<div style="font-size:11px;margin:4px 0;"><b>Produto:</b> ${escaparHtmlVenda(l.product_name || 'Produto')} · Venda: ${fmtBRL(l.sale_price_cents)} · Entrada: ${fmtBRL(l.down_payment_cents)}</div>${l.product_description ? `<div style="font-size:10px;color:var(--grey2);">${escaparHtmlVenda(l.product_description)}</div>` : ''}`
+        : '';
       return `<div style="background:rgba(255,215,0,0.06);border-radius:10px;padding:10px;margin-top:10px;">
         <div style="font-weight:700;color:var(--primary);">${l.operation_type === 'installment_sale' ? '🛍️ Venda parcelada' : '💰 Empréstimo'} — ${l.status}</div>
+        ${produtoVenda}
         <div style="font-size:11px;margin:4px 0;">Principal: ${fmtBRL(l.principal_cents)} · Total com juros: ${fmtBRL(totalParcelas)}</div>
         <div style="margin-top:6px;">${linhasParcelas || '<span style="color:var(--grey2);">Sem parcelas.</span>'}</div>
-        ${l.status === 'active' ? `<button class="btn-secondary" style="width:100%;margin-top:8px;background:var(--error);color:#fff;border:none;font-size:11px;" onclick="cancelarEmprestimoReal('${l.id}','${clientId}')">🗑️ Cancelar empréstimo (dados errados)</button>` : ''}
+        ${l.status === 'active' ? `<button class="btn-secondary" style="width:100%;margin-top:8px;background:var(--error);color:#fff;border:none;font-size:11px;" onclick="cancelarEmprestimoReal('${l.id}','${clientId}')">🗑️ Cancelar operação (dados errados)</button>` : ''}
       </div>`;
     }).join('');
   }
@@ -2621,7 +3014,7 @@ async function abrirDetalheClienteReal(clientId) {
     <div><b>Instagram:</b> ${md.instagram || '—'}</div>
     <div><b>Status:</b> ${statusLabel[c.status] || c.status || '—'}</div>
     <div><b>Cadastrado em:</b> ${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</div>
-    <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Empréstimos</div>
+    <div style="margin-top:10px;font-weight:700;color:var(--primary);">📄 Operações</div>
     ${htmlEmprestimos}
   `;
   if (document.getElementById(`manualPreview_${c.id}`)) calcularPreviewManual(c.id);
