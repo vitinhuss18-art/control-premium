@@ -1012,7 +1012,12 @@
     <div class="ia-box" style="margin-bottom:16px;">
       <div class="head">📱 Cadastro Inteligente</div>
       <p>Envie o link para o cliente se cadastrar automaticamente via WhatsApp.</p>
+      <div class="form-group" style="margin-top:10px;">
+        <label>WhatsApp do cliente</label>
+        <input id="conviteWhats" placeholder="(00) 00000-0000" oninput="mascararTelefone(this)" maxlength="15">
+      </div>
       <button class="btn-primary" style="background:var(--purple);color:#fff;margin-top:10px;" onclick="enviarLinkWhatsApp()">📤 Enviar link</button>
+      <div id="conviteWhatsappResultado" style="display:none;font-size:11px;margin-top:8px;text-align:center;"></div>
     </div>
 
     <div class="section-title">ou manualmente</div>
@@ -1356,7 +1361,7 @@
       <div class="form-group"><label>Nome / Razão Social</label><input id="assNome" placeholder="Ex: Ricardo Souza"></div>
       <div class="form-group"><label>CPF/CNPJ</label><input id="assDocumento" placeholder="000.000.000-00"></div>
       <div class="form-row">
-        <div class="form-group"><label>WhatsApp</label><input id="assWhatsapp" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label>WhatsApp</label><input id="assWhatsapp" placeholder="(00) 00000-0000" oninput="mascararTelefone(this)" maxlength="15"></div>
         <div class="form-group"><label>SMS</label><input id="assSms" placeholder="(00) 00000-0000"></div>
       </div>
       <div class="form-group"><label>Banco</label><input id="assBanco" placeholder="Ex: Nubank"></div>
@@ -1367,6 +1372,15 @@
       <div class="form-group"><label>Chave PIX</label><input id="assChavePix" placeholder="CPF, e-mail, telefone ou chave"></div>
       <button class="btn-primary" onclick="salvarDadosAssinante()">💾 Salvar dados</button>
       <div id="assinanteStatus" style="display:none;color:var(--primary);font-size:11px;margin-top:8px;text-align:center;">✅ Dados salvos!</div>
+
+      <div style="margin-top:16px;padding:14px;border:1px solid rgba(179,136,255,.25);border-radius:12px;background:rgba(179,136,255,.05);">
+        <div style="font-size:12px;font-weight:800;color:#fff;">📱 WhatsApp da empresa</div>
+        <div id="whatsappConnectionStatus" style="font-size:11px;color:var(--grey2);margin:6px 0 10px;">Verificando conexão...</div>
+        <img id="whatsappConnectionQr" alt="QR Code para conectar o WhatsApp" style="display:none;width:220px;max-width:100%;margin:8px auto 12px;border-radius:10px;background:#fff;padding:8px;">
+        <button id="whatsappConnectButton" class="btn-primary" onclick="conectarWhatsAppEvolution()">🔗 Conectar este WhatsApp</button>
+        <button id="whatsappDisconnectButton" class="btn-secondary" style="display:none;width:100%;margin-top:8px;background:var(--error);color:#fff;border:none;" onclick="desconectarWhatsAppEvolution()">Desconectar WhatsApp</button>
+        <div style="font-size:10px;color:var(--grey2);margin-top:8px;line-height:1.45;">Leia o QR Code no aparelho que usa o número informado acima. As mensagens desta empresa sairão somente desse WhatsApp.</div>
+      </div>
     </div>
 
     <div class="section-title">🤖 Automações</div>
@@ -2173,6 +2187,151 @@ async function renovarAssinatura(tipo) {
   }
 }
 
+let whatsappConnectionPollTimer = null;
+
+function atualizarPainelConexaoWhatsApp(resultado) {
+  const status = document.getElementById('whatsappConnectionStatus');
+  const qr = document.getElementById('whatsappConnectionQr');
+  const conectar = document.getElementById('whatsappConnectButton');
+  const desconectar = document.getElementById('whatsappDisconnectButton');
+  if (!status || !qr || !conectar || !desconectar) return;
+
+  const textos = {
+    not_configured: '⚙️ A Evolution API ainda precisa ser configurada no servidor.',
+    disconnected: 'WhatsApp ainda não conectado.',
+    pending: 'Aguardando início da conexão.',
+    connecting: 'Leia o QR Code com o WhatsApp informado acima.',
+    open: `✅ Conectado${resultado.connectedNumber ? ` no número +${resultado.connectedNumber}` : ''}.`,
+    close: '⚠ WhatsApp desconectado. Gere um novo QR Code.',
+    mismatch: '⚠ O número lido no QR Code não é o mesmo número cadastrado.',
+    error: '⚠ Não foi possível confirmar a conexão.',
+  };
+  status.textContent = textos[resultado.status] || 'Status do WhatsApp indisponível.';
+  status.style.color = resultado.status === 'open'
+    ? 'var(--success)'
+    : ['mismatch', 'error'].includes(resultado.status)
+      ? 'var(--error)'
+      : 'var(--grey2)';
+
+  if (resultado.qrCode) {
+    qr.src = resultado.qrCode;
+    qr.style.display = 'block';
+  } else if (resultado.status !== 'connecting') {
+    qr.removeAttribute('src');
+    qr.style.display = 'none';
+  }
+
+  conectar.disabled = resultado.configured === false;
+  conectar.textContent = resultado.status === 'open'
+    ? '✅ WhatsApp conectado'
+    : resultado.status === 'connecting'
+      ? '🔄 Gerar novo QR Code'
+      : '🔗 Conectar este WhatsApp';
+  desconectar.style.display = ['open', 'connecting', 'mismatch'].includes(resultado.status)
+    ? 'block'
+    : 'none';
+}
+
+function agendarVerificacaoWhatsApp() {
+  if (whatsappConnectionPollTimer) clearTimeout(whatsappConnectionPollTimer);
+  whatsappConnectionPollTimer = setTimeout(() => carregarConexaoWhatsApp(true), 5000);
+}
+
+async function carregarConexaoWhatsApp(silencioso = false) {
+  try {
+    const token = await tokenAssinante();
+    if (!token) return null;
+    const resp = await fetch('/api/whatsapp/connection', {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(resultado.message || 'Falha ao consultar o WhatsApp');
+    atualizarPainelConexaoWhatsApp(resultado);
+    if (resultado.registeredNumber && !document.getElementById('assWhatsapp')?.value) {
+      document.getElementById('assWhatsapp').value = resultado.registeredNumber.replace(/^55/, '');
+    }
+    if (resultado.status === 'connecting') agendarVerificacaoWhatsApp();
+    return resultado;
+  } catch (e) {
+    if (!silencioso) mostrarToastAssinatura(`⚠ ${e.message}`, 5000);
+    return null;
+  }
+}
+
+async function conectarWhatsAppEvolution() {
+  const numero = document.getElementById('assWhatsapp')?.value.trim() || '';
+  const botao = document.getElementById('whatsappConnectButton');
+  try {
+    const token = await tokenAssinante();
+    if (!token) throw new Error('Sessão expirada. Entre novamente.');
+    if (botao) botao.disabled = true;
+    mostrarToastAssinatura('⏳ Preparando a conexão do WhatsApp...');
+    const resp = await fetch('/api/whatsapp/connection', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ number: numero }),
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(resultado.message || 'Não foi possível conectar o WhatsApp');
+    atualizarPainelConexaoWhatsApp(resultado);
+    if (resultado.status === 'open') {
+      mostrarToastAssinatura('✅ WhatsApp conectado e confirmado.');
+    } else {
+      mostrarToastAssinatura('📱 Leia o QR Code no WhatsApp informado.', 5000);
+      agendarVerificacaoWhatsApp();
+    }
+  } catch (e) {
+    mostrarToastAssinatura(`⚠ ${e.message}`, 5000);
+  } finally {
+    if (botao) botao.disabled = false;
+  }
+}
+
+async function desconectarWhatsAppEvolution() {
+  if (!confirm('Desconectar o WhatsApp desta empresa? Os envios automáticos serão interrompidos.')) return;
+  try {
+    const token = await tokenAssinante();
+    if (!token) throw new Error('Sessão expirada. Entre novamente.');
+    const resp = await fetch('/api/whatsapp/connection', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(resultado.message || 'Não foi possível desconectar');
+    if (whatsappConnectionPollTimer) clearTimeout(whatsappConnectionPollTimer);
+    await carregarConexaoWhatsApp(true);
+    mostrarToastAssinatura('WhatsApp desconectado.');
+  } catch (e) {
+    mostrarToastAssinatura(`⚠ ${e.message}`, 5000);
+  }
+}
+
+async function enviarWhatsAppAutomatico(payload) {
+  try {
+    const token = await tokenAssinante();
+    if (!token) throw new Error('Sessão expirada. Entre novamente.');
+    const resp = await fetch('/api/whatsapp/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const resultado = await resp.json().catch(() => ({}));
+    if (!resp.ok || !resultado.sent) {
+      throw new Error(resultado.message || 'A mensagem ainda não foi enviada');
+    }
+    return { sent: true, error: null };
+  } catch (e) {
+    return { sent: false, error: e.message };
+  }
+}
+
 function salvarDadosAssinante() {
   const dados = {
     nome: document.getElementById('assNome').value.trim(),
@@ -2236,6 +2395,7 @@ function preencherFormAssinante() {
   document.getElementById('toggleNegociacaoAuto')?.classList.toggle('on', auto.negociacaoAuto);
 
   atualizarNomesAdmin();
+  carregarConexaoWhatsApp(true);
 }
 
 // ============================================================
@@ -3063,6 +3223,13 @@ async function enviarLinkWhatsApp() {
     return;
   }
 
+  let numeroDigits = (document.getElementById('conviteWhats')?.value || '').replace(/\D/g, '');
+  if (numeroDigits.length === 10 || numeroDigits.length === 11) numeroDigits = `55${numeroDigits}`;
+  if (!/^55[1-9][0-9]{9,10}$/.test(numeroDigits)) {
+    alert('⚠ Informe o WhatsApp do cliente com DDD.');
+    return;
+  }
+
   const { data: token, error } = await window.supabaseClient.rpc('create_client_signup_link');
   if (error) {
     alert('⚠ Não foi possível gerar o link: ' + error.message);
@@ -3072,9 +3239,40 @@ async function enviarLinkWhatsApp() {
   // Link relativo: funciona tanto localmente (mesma pasta que o cadastro.html)
   // quanto depois de publicado, desde que os dois arquivos fiquem juntos.
   const link = `${window.location.origin}/cadastro?token=${token}`;
-  const texto = encodeURIComponent(`Olá! Segue o link para se cadastrar: ${link}`);
-  window.open(`https://wa.me/?text=${texto}`, '_blank');
-  registrarAuditoria('Link de cadastro aberto no WhatsApp', 'Assinante compartilhou o link de cadastro');
+  const texto = `Olá! Segue o link para se cadastrar: ${link}`;
+  const resultado = document.getElementById('conviteWhatsappResultado');
+  if (resultado) {
+    resultado.style.display = 'block';
+    resultado.style.color = 'var(--grey2)';
+    resultado.textContent = 'Enviando pelo WhatsApp da empresa...';
+  }
+
+  const envio = await enviarWhatsAppAutomatico({
+    kind: 'signup_invite',
+    recipient: numeroDigits,
+    signupToken: token,
+  });
+  if (envio.sent) {
+    if (resultado) {
+      resultado.style.color = 'var(--success)';
+      resultado.textContent = '✅ Link enviado pelo WhatsApp da empresa.';
+    }
+    registrarAuditoria('Link de cadastro enviado no WhatsApp', 'Envio automático pelo número do assinante');
+    return;
+  }
+
+  if (resultado) {
+    resultado.style.color = 'var(--error)';
+    resultado.textContent = `⚠ ${envio.error}. Use o envio manual: `;
+    const fallback = document.createElement('a');
+    fallback.href = `https://wa.me/${numeroDigits}?text=${encodeURIComponent(texto)}`;
+    fallback.target = '_blank';
+    fallback.rel = 'noopener noreferrer';
+    fallback.textContent = 'abrir WhatsApp';
+    fallback.style.color = 'var(--primary)';
+    resultado.appendChild(fallback);
+  }
+  registrarAuditoria('Fallback do link de cadastro', 'Envio automático indisponível');
 }
 
 // [FRONT-END] mostra uma pequena prévia da foto assim que o arquivo é escolhido
@@ -3400,14 +3598,23 @@ async function decidirPropostaExterna(proposalId, decisao) {
     mensagem = `Oi ${registro.full_name}, por enquanto sua proposta não foi aprovada.\n\nVocê pode enviar uma nova proposta a partir de ${dataFormatada}.`;
   }
 
-  const linkWhats = `https://wa.me/55${numeroDigits}?text=${encodeURIComponent(mensagem)}`;
+  const numeroInternacional = numeroDigits.startsWith('55') ? numeroDigits : `55${numeroDigits}`;
+  const linkWhats = `https://wa.me/${numeroInternacional}?text=${encodeURIComponent(mensagem)}`;
+  const envioWhatsApp = await enviarWhatsAppAutomatico({
+    kind: 'proposal_result',
+    proposalId,
+  });
   const tituloResultado = decisao === 'approved'
     ? (avisoEmprestimo ? '✅ Cliente criado.' : '✅ Cliente e empréstimo criados com sucesso.')
     : '❌ Proposta recusada.';
+  const statusEnvio = envioWhatsApp.sent
+    ? '<div style="color:var(--success);margin-top:6px;">✅ Resultado enviado automaticamente pelo WhatsApp da empresa.</div>'
+    : `<div style="color:var(--error);margin-top:6px;">⚠ O envio automático não foi concluído. Use o botão abaixo.</div>
+       <a href="${linkWhats}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;">📤 Abrir WhatsApp</a>`;
   resultado.innerHTML = `
     <div style="background:rgba(255,215,0,0.08);border-radius:10px;padding:10px;margin-top:10px;font-size:11px;">
-      ${tituloResultado} Envie o resultado pelo WhatsApp:
-      <a href="${linkWhats}" target="_blank" class="btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;">📤 Abrir WhatsApp</a>
+      ${tituloResultado}
+      ${statusEnvio}
       ${avisoEmprestimo}
     </div>`;
 
