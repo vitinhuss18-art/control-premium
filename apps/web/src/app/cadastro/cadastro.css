@@ -184,6 +184,58 @@
   cursor: pointer;
 }
 
+.cp-consent-card {
+  margin: 8px 0 18px;
+  padding: 16px;
+  background: rgba(179, 136, 255, 0.06);
+  border: 1px solid rgba(179, 136, 255, 0.18);
+  border-radius: 14px;
+}
+
+.cp-consent-card h2 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cp-consent-text {
+  max-height: 150px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 12px;
+  background: rgba(10, 10, 15, 0.45);
+  border-radius: 10px;
+  color: #c7c7cf;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.cp-consent-note {
+  margin: 10px 0 14px;
+  color: #b388ff;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cp-consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.cp-consent-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #ffd700;
+  flex: 0 0 auto;
+}
+
 .cp-error {
   background: rgba(255, 82, 82, 0.1);
   color: #ff5252;

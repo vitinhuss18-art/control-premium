@@ -1,7 +1,14 @@
+import { createHmac } from "node:crypto";
+
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { isValidCpf } from "@control-premium/domain";
+import {
+  normalizeSignatureName,
+  PROPOSAL_CONSENT_SHA256,
+  PROPOSAL_CONSENT_VERSION,
+} from "../../../lib/proposalConsent";
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
@@ -46,9 +53,19 @@ function unavailable() {
 function isMissingAtomicFunction(error: { code?: string; message?: string }) {
   return (
     error.code === "PGRST202" ||
-    (/submit_client_proposal/i.test(error.message ?? "") &&
+    (/submit_client_proposal_with_consent/i.test(error.message ?? "") &&
       /not find|does not exist|schema cache/i.test(error.message ?? ""))
   );
+}
+
+function buildIpHash(req: Request): string | null {
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const address = forwarded || req.headers.get("x-real-ip")?.trim();
+  if (!address) return null;
+
+  return createHmac("sha256", SERVICE_ROLE_KEY)
+    .update(`proposal-consent-ip:${address}`, "utf8")
+    .digest("hex");
 }
 
 export async function POST(req: Request) {
@@ -69,6 +86,8 @@ export async function POST(req: Request) {
   const address = String(formData.get("address") ?? "").trim();
   const region = String(formData.get("region") ?? "").trim();
   const loanAmountCents = Number(formData.get("loanAmountCents") ?? 0);
+  const signatureName = String(formData.get("signatureName") ?? "").trim();
+  const consentAccepted = formData.get("consentAccepted") === "true";
 
   if (!token || token.length > 256)
     return badRequest("Link de cadastro inválido.");
@@ -90,6 +109,18 @@ export async function POST(req: Request) {
     loanAmountCents > MAX_LOAN_AMOUNT_CENTS
   ) {
     return badRequest("Informe um valor desejado válido.");
+  }
+  if (!consentAccepted) {
+    return badRequest("Leia e aceite o termo para enviar a proposta.");
+  }
+  if (
+    signatureName.length < 3 ||
+    signatureName.length > 120 ||
+    normalizeSignatureName(signatureName) !== normalizeSignatureName(fullName)
+  ) {
+    return badRequest(
+      "A assinatura deve ser igual ao nome completo informado.",
+    );
   }
 
   const photos: Record<PhotoKey, File> = {} as Record<PhotoKey, File>;
@@ -169,55 +200,29 @@ export async function POST(req: Request) {
     p_address: address,
     p_region: region,
     p_loan_amount_cents: loanAmountCents,
+    p_consent_version: PROPOSAL_CONSENT_VERSION,
+    p_consent_sha256: PROPOSAL_CONSENT_SHA256,
+    p_signer_name: signatureName,
+    p_ip_hash: buildIpHash(req),
+    p_user_agent: req.headers.get("user-agent")?.slice(0, 512) ?? null,
+    p_request_id: crypto.randomUUID(),
   };
   const { error: atomicError } = await anonClient.rpc(
-    "submit_client_proposal",
+    "submit_client_proposal_with_consent",
     proposalPayload,
   );
 
   if (atomicError && isMissingAtomicFunction(atomicError)) {
-    // Compatibilidade durante a janela entre o deploy do código e a aplicação
-    // da migration atômica. Depois da migration, este caminho não é usado.
-    const { error: insertError } = await anonClient
-      .from("client_proposals")
-      .insert({
-        id: proposalId,
-        tenant_id: validation.tenant_id,
-        signup_link_id: validation.link_id,
-        full_name: fullName,
-        cpf,
-        instagram: instagram || null,
-        pix_key: pixKey || null,
-        whatsapp,
-        sms: sms || null,
-        address,
-        region,
-        loan_amount_cents: loanAmountCents,
-        status: "pending",
-      });
-    if (insertError) {
-      await cleanupObjects();
-      return NextResponse.json(
-        { message: "Não foi possível registrar sua proposta." },
-        { status: 500 },
-      );
-    }
-    const { error: consumeError } = await anonClient.rpc(
-      "consume_signup_link",
-      { p_link_id: validation.link_id },
+    await cleanupObjects();
+    return NextResponse.json(
+      {
+        message:
+          "O cadastro está sendo atualizado. Tente novamente em instantes.",
+      },
+      { status: 503 },
     );
-    if (consumeError) {
-      await serviceClient
-        .from("client_proposals")
-        .delete()
-        .eq("id", proposalId);
-      await cleanupObjects();
-      return NextResponse.json(
-        { message: "Não foi possível concluir o cadastro. Tente novamente." },
-        { status: 500 },
-      );
-    }
-  } else if (atomicError) {
+  }
+  if (atomicError) {
     await cleanupObjects();
     return badRequest("Link de cadastro inválido, expirado ou já utilizado.");
   }
