@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import {
+  normalizeSignatureName,
+  PROPOSAL_CONSENT_TEXT,
+} from "../../lib/proposalConsent";
 import "./cadastro.css";
 
 type PhotoKey = "foto" | "docFrente" | "docVerso" | "fachada";
@@ -110,6 +114,8 @@ export default function CadastroPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signatureName, setSignatureName] = useState("");
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [token] = useState<string | null>(() =>
     typeof window === "undefined"
       ? null
@@ -175,6 +181,13 @@ export default function CadastroPage() {
     for (const key of Object.keys(photos) as PhotoKey[]) {
       if (!photos[key].file) return "Envie todas as 4 fotos obrigatórias.";
     }
+    if (
+      normalizeSignatureName(signatureName) !==
+      normalizeSignatureName(form.fullName)
+    ) {
+      return "Digite na assinatura o mesmo nome completo informado acima.";
+    }
+    if (!consentAccepted) return "Leia e aceite o termo para continuar.";
     return null;
   }
 
@@ -199,6 +212,8 @@ export default function CadastroPage() {
       fd.append("address", form.address.trim());
       fd.append("region", form.region.trim());
       fd.append("loanAmountCents", form.loanAmount.replace(/\D/g, ""));
+      fd.append("signatureName", signatureName.trim());
+      fd.append("consentAccepted", String(consentAccepted));
       (Object.keys(photos) as PhotoKey[]).forEach((key) => {
         const f = photos[key].file;
         if (f) fd.append(key, f);
@@ -226,8 +241,8 @@ export default function CadastroPage() {
           <div className="cp-success-icon">✓</div>
           <h1 className="cp-h1">Proposta enviada!</h1>
           <p className="cp-sub">
-            Recebemos seus dados e fotos. Sua proposta está aguardando análise.
-            Você receberá o resultado no WhatsApp informado.
+            Recebemos seus dados, fotos e aceite eletrônico. Sua proposta está
+            aguardando análise. Você receberá o resultado no WhatsApp informado.
           </p>
         </div>
       </main>
@@ -402,6 +417,40 @@ export default function CadastroPage() {
             onChange={(e) => onPhoto("fachada", e)}
           />
 
+          <section className="cp-consent-card" aria-labelledby="consent-title">
+            <h2 id="consent-title">Aceite e assinatura eletrônica</h2>
+            <p className="cp-consent-text">{PROPOSAL_CONSENT_TEXT}</p>
+            <p className="cp-consent-note">
+              Este aceite registra o envio da proposta. Se ela for aprovada, as
+              condições financeiras finais ainda deverão ser apresentadas antes
+              da contratação.
+            </p>
+
+            <div className="cp-field">
+              <label htmlFor="signatureName">
+                Digite seu nome completo para assinar *
+              </label>
+              <input
+                id="signatureName"
+                type="text"
+                autoComplete="name"
+                value={signatureName}
+                onChange={(e) => setSignatureName(e.target.value)}
+                placeholder="O mesmo nome informado no cadastro"
+              />
+            </div>
+
+            <label className="cp-consent-check" htmlFor="consentAccepted">
+              <input
+                id="consentAccepted"
+                type="checkbox"
+                checked={consentAccepted}
+                onChange={(e) => setConsentAccepted(e.target.checked)}
+              />
+              <span>Li, concordo e confirmo minha assinatura eletrônica.</span>
+            </label>
+          </section>
+
           {error && <div className="cp-error">{error}</div>}
 
           <button
@@ -409,7 +458,7 @@ export default function CadastroPage() {
             className="cp-btn-primary"
             disabled={submitting}
           >
-            {submitting ? "Enviando..." : "Enviar proposta"}
+            {submitting ? "Enviando..." : "Assinar e enviar proposta"}
           </button>
         </form>
       </div>
