@@ -5,6 +5,7 @@ import {
   CLIENT_SESSION_COOKIE,
   verifyClientSessionToken,
 } from "@/lib/clientSession";
+import { canAmortizeClientLoan } from "@/lib/clientLoanDashboard";
 
 type InstallmentRow = {
   sequence_number: number;
@@ -16,6 +17,7 @@ type InstallmentRow = {
 
 type LoanRow = {
   id: string;
+  operation_type: string;
   status: string;
   principal_cents: number;
   created_at: string;
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
   const { data: loans, error } = await service
     .from("loans")
     .select(
-      "id, status, principal_cents, created_at, installments!installments_loan_id_fkey(sequence_number, due_date, total_cents, paid_cents, status)",
+      "id, operation_type, status, principal_cents, created_at, installments!installments_loan_id_fkey(sequence_number, due_date, total_cents, paid_cents, status)",
     )
     .eq("tenant_id", session.tenantId)
     .eq("client_id", session.clientId)
@@ -79,12 +81,27 @@ export async function GET(request: NextRequest) {
       if (item.status === "cancelled") return sum;
       return sum + Math.max(0, item.total_cents - item.paid_cents);
     }, 0);
+    const amortizationAvailable = canAmortizeClientLoan({
+      status: loan.status,
+      outstandingCents,
+      installments: installments.map((item) => ({
+        dueDate: item.due_date,
+        totalCents: item.total_cents,
+        paidCents: item.paid_cents,
+        status: item.status,
+      })),
+    });
     return {
       loanId: loan.id,
+      operationType:
+        loan.operation_type === "installment_sale"
+          ? "installment_sale"
+          : "loan",
       status: loan.status,
       principalCents: loan.principal_cents,
       contractedTotalCents,
       outstandingCents,
+      amortizationAvailable,
       createdAt: loan.created_at,
       installments: installments.map((item) => ({
         sequenceNumber: item.sequence_number,

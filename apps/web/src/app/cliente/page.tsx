@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import "./cliente.css";
 
@@ -14,10 +14,12 @@ type Installment = {
 
 type Loan = {
   loanId: string;
+  operationType: "loan" | "installment_sale";
   status: string;
   principalCents: number;
   contractedTotalCents: number;
   outstandingCents: number;
+  amortizationAvailable: boolean;
   createdAt: string;
   installments: Installment[];
 };
@@ -55,6 +57,33 @@ function whatsappLink(
   const digits = rawNumber.replace(/\D/g, "");
   if (!digits) return null;
   return `https://wa.me/55${digits}?text=${encodeURIComponent(message)}`;
+}
+
+function PaymentAction({
+  href,
+  variant,
+  children,
+}: Readonly<{
+  href: string | null;
+  variant: "interest" | "payoff" | "amortize";
+  children: ReactNode;
+}>) {
+  const className = `client-portal__action-button client-portal__action-button--${variant}`;
+  if (!href) {
+    return (
+      <span
+        className={`${className} client-portal__action-button--disabled`}
+        aria-disabled="true"
+      >
+        {children}
+      </span>
+    );
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className={className}>
+      {children}
+    </a>
+  );
 }
 
 const LOAN_STATUS_LABEL: Record<string, string> = {
@@ -122,6 +151,19 @@ export default function ClientPortalPage() {
     }
   }
 
+  const totalDueCents =
+    data?.loans.reduce((sum, loan) => {
+      if (loan.status === "cancelled" || loan.status === "settled") return sum;
+      return sum + loan.outstandingCents;
+    }, 0) ?? 0;
+  const openLoanCount =
+    data?.loans.filter(
+      (loan) =>
+        loan.outstandingCents > 0 &&
+        loan.status !== "cancelled" &&
+        loan.status !== "settled",
+    ).length ?? 0;
+
   return (
     <main className="client-portal">
       <div className="client-portal__wrap">
@@ -143,6 +185,20 @@ export default function ClientPortalPage() {
 
         {error && <p className="client-portal__error">{error}</p>}
 
+        {!loading && !error && data && (
+          <section className="client-dashboard" aria-label="Resumo financeiro">
+            <span className="client-dashboard__label">Valor total devido</span>
+            <strong className="client-dashboard__value">
+              {formatCents(totalDueCents)}
+            </strong>
+            <span className="client-dashboard__meta">
+              {openLoanCount === 1
+                ? "1 empréstimo em aberto"
+                : `${openLoanCount} empréstimos em aberto`}
+            </span>
+          </section>
+        )}
+
         {!loading && !error && data && data.loans.length === 0 && (
           <div className="client-portal__empty">
             Você ainda não tem nenhum empréstimo cadastrado por aqui.
@@ -154,11 +210,42 @@ export default function ClientPortalPage() {
           data?.loans.map((loan) => {
             const tenantWhatsapp = data.tenantWhatsapp;
             const tenantName = data.tenantName;
+            const isOpen =
+              loan.outstandingCents > 0 &&
+              loan.status !== "cancelled" &&
+              loan.status !== "settled";
+            const interestLink =
+              isOpen && loan.operationType === "loan"
+                ? whatsappLink(
+                    tenantWhatsapp,
+                    `Oi! Quero pagar os juros do meu empréstimo. Saldo em aberto: ${formatCents(
+                      loan.outstandingCents,
+                    )}.`,
+                  )
+                : null;
+            const payoffLink = isOpen
+              ? whatsappLink(
+                  tenantWhatsapp,
+                  `Oi! Quero quitar meu empréstimo. Saldo em aberto: ${formatCents(
+                    loan.outstandingCents,
+                  )}.`,
+                )
+              : null;
+            const amortizationLink = loan.amortizationAvailable
+              ? whatsappLink(
+                  tenantWhatsapp,
+                  `Oi! Meu empréstimo está em dia e quero amortizar o saldo devedor de ${formatCents(
+                    loan.outstandingCents,
+                  )}.`,
+                )
+              : null;
             return (
               <article key={loan.loanId} className="loan-card">
                 <div className="loan-card__top">
                   <strong>
-                    Empréstimo{" "}
+                    {loan.operationType === "installment_sale"
+                      ? "Venda parcelada"
+                      : "Empréstimo"}{" "}
                     {new Date(loan.createdAt).toLocaleDateString("pt-BR")}
                   </strong>
                   <span
@@ -178,41 +265,43 @@ export default function ClientPortalPage() {
 
                 <div className="loan-card__totals">
                   <div>
+                    <span>Valor devido neste contrato</span>
+                    <strong>{formatCents(loan.outstandingCents)}</strong>
+                  </div>
+                  <div>
                     <span>Valor contratado</span>
                     <strong>{formatCents(loan.contractedTotalCents)}</strong>
                   </div>
-                  <div>
-                    <span>Saldo em aberto</span>
-                    <strong>{formatCents(loan.outstandingCents)}</strong>
-                  </div>
                 </div>
 
-                {loan.outstandingCents > 0 &&
-                  loan.status !== "cancelled" &&
-                  loan.status !== "settled" &&
-                  (() => {
-                    const link = whatsappLink(
-                      tenantWhatsapp,
-                      `Oi! Quero quitar meu empréstimo. Saldo em aberto: ${formatCents(
-                        loan.outstandingCents,
-                      )}.`,
-                    );
-                    return link ? (
-                      <a
-                        href={link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="client-portal__pay-button"
-                      >
-                        💰 Quitar dívida ({formatCents(loan.outstandingCents)})
-                      </a>
-                    ) : (
-                      <p className="client-portal__state">
-                        Pra quitar ou pagar, fale diretamente com{" "}
+                {isOpen && (
+                  <div
+                    className="loan-card__actions"
+                    aria-label="Formas de pagamento"
+                  >
+                    {loan.operationType === "loan" && (
+                      <PaymentAction href={interestLink} variant="interest">
+                        Pagar juros
+                      </PaymentAction>
+                    )}
+                    <PaymentAction href={payoffLink} variant="payoff">
+                      {loan.operationType === "installment_sale"
+                        ? "Quitar venda parcelada"
+                        : "Quitar empréstimo"}
+                    </PaymentAction>
+                    {loan.amortizationAvailable && (
+                      <PaymentAction href={amortizationLink} variant="amortize">
+                        Amortizar empréstimo
+                      </PaymentAction>
+                    )}
+                    {!tenantWhatsapp && (
+                      <p className="loan-card__contact-note">
+                        Para pagar, fale diretamente com{" "}
                         {tenantName ?? "quem te emprestou"}.
                       </p>
-                    );
-                  })()}
+                    )}
+                  </div>
+                )}
 
                 <div className="loan-card__installments">
                   {loan.installments.map((installment) => {
