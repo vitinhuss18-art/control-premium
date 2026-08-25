@@ -19,6 +19,14 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 
 ## [Não publicado]
 
+### Alterado
+
+- Reorganiza o portal do cliente com um dashboard do valor total devido e ações
+  ordenadas para pagar juros, quitar e amortizar o empréstimo; a amortização só
+  aparece para contrato ativo e sem parcela vencida em aberto.
+- Atualiza dependências indiretas para corrigir vulnerabilidades de negação de
+  serviço identificadas pela auditoria.
+
 ### Adicionado
 
 - Roteiro operacional de 228 etapas e 19 marcos.
