@@ -21,6 +21,8 @@ O formato segue os princípios de Keep a Changelog e versionamento semântico qu
 
 ### Alterado
 
+- Oculta empréstimos e parcelas cancelados do portal do cliente e filtra esses
+  registros antes de enviá-los ao navegador.
 - Reorganiza o portal do cliente com um dashboard do valor total devido e ações
   ordenadas para pagar juros, quitar e amortizar o empréstimo; a amortização só
   aparece para contrato ativo e sem parcela vencida em aberto.

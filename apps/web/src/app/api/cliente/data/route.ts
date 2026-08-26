@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
     )
     .eq("tenant_id", session.tenantId)
     .eq("client_id", session.clientId)
+    .neq("status", "cancelled")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -70,17 +71,17 @@ export async function GET(request: NextRequest) {
   const loanRows = (loans ?? []) as unknown as LoanRow[];
 
   const shaped = loanRows.map((loan) => {
-    const installments = [...(loan.installments ?? [])].sort(
-      (a, b) => a.sequence_number - b.sequence_number,
-    );
+    const installments = [...(loan.installments ?? [])]
+      .filter((item) => item.status !== "cancelled")
+      .sort((a, b) => a.sequence_number - b.sequence_number);
     const contractedTotalCents = installments.reduce(
       (sum, item) => sum + item.total_cents,
       0,
     );
-    const outstandingCents = installments.reduce((sum, item) => {
-      if (item.status === "cancelled") return sum;
-      return sum + Math.max(0, item.total_cents - item.paid_cents);
-    }, 0);
+    const outstandingCents = installments.reduce(
+      (sum, item) => sum + Math.max(0, item.total_cents - item.paid_cents),
+      0,
+    );
     const amortizationAvailable = canAmortizeClientLoan({
       status: loan.status,
       outstandingCents,
