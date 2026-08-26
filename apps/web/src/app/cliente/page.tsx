@@ -92,7 +92,6 @@ const LOAN_STATUS_LABEL: Record<string, string> = {
   active: "Em andamento",
   settled: "Quitado",
   delinquent: "Em atraso",
-  cancelled: "Cancelado",
 };
 
 const INSTALLMENT_STATUS_LABEL: Record<string, string> = {
@@ -100,7 +99,6 @@ const INSTALLMENT_STATUS_LABEL: Record<string, string> = {
   partially_paid: "Pago parcial",
   paid: "Pago",
   overdue: "Atrasada",
-  cancelled: "Cancelada",
 };
 
 export default function ClientPortalPage() {
@@ -151,18 +149,15 @@ export default function ClientPortalPage() {
     }
   }
 
-  const totalDueCents =
-    data?.loans.reduce((sum, loan) => {
-      if (loan.status === "cancelled" || loan.status === "settled") return sum;
-      return sum + loan.outstandingCents;
-    }, 0) ?? 0;
-  const openLoanCount =
-    data?.loans.filter(
-      (loan) =>
-        loan.outstandingCents > 0 &&
-        loan.status !== "cancelled" &&
-        loan.status !== "settled",
-    ).length ?? 0;
+  const visibleLoans =
+    data?.loans.filter((loan) => loan.status !== "cancelled") ?? [];
+  const totalDueCents = visibleLoans.reduce((sum, loan) => {
+    if (loan.status === "settled") return sum;
+    return sum + loan.outstandingCents;
+  }, 0);
+  const openLoanCount = visibleLoans.filter(
+    (loan) => loan.outstandingCents > 0 && loan.status !== "settled",
+  ).length;
 
   return (
     <main className="client-portal">
@@ -199,7 +194,7 @@ export default function ClientPortalPage() {
           </section>
         )}
 
-        {!loading && !error && data && data.loans.length === 0 && (
+        {!loading && !error && data && visibleLoans.length === 0 && (
           <div className="client-portal__empty">
             Você ainda não tem nenhum empréstimo cadastrado por aqui.
           </div>
@@ -207,13 +202,15 @@ export default function ClientPortalPage() {
 
         {!loading &&
           !error &&
-          data?.loans.map((loan) => {
+          data &&
+          visibleLoans.map((loan) => {
             const tenantWhatsapp = data.tenantWhatsapp;
             const tenantName = data.tenantName;
             const isOpen =
-              loan.outstandingCents > 0 &&
-              loan.status !== "cancelled" &&
-              loan.status !== "settled";
+              loan.outstandingCents > 0 && loan.status !== "settled";
+            const visibleInstallments = loan.installments.filter(
+              (installment) => installment.status !== "cancelled",
+            );
             const interestLink =
               isOpen && loan.operationType === "loan"
                 ? whatsappLink(
@@ -304,10 +301,8 @@ export default function ClientPortalPage() {
                 )}
 
                 <div className="loan-card__installments">
-                  {loan.installments.map((installment) => {
-                    const emAberto =
-                      installment.status !== "paid" &&
-                      installment.status !== "cancelled";
+                  {visibleInstallments.map((installment) => {
+                    const emAberto = installment.status !== "paid";
                     const saldoParcela = Math.max(
                       0,
                       installment.totalCents - installment.paidCents,

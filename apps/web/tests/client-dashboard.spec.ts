@@ -80,3 +80,45 @@ test("oculta amortização quando o contrato não está em dia", async ({
   ).toBeVisible();
   await expect(page.getByText("Amortizar empréstimo")).toHaveCount(0);
 });
+
+test("não mostra empréstimos ou parcelas cancelados", async ({ page }) => {
+  await page.route("**/api/cliente/data", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...portalData,
+        loans: [
+          {
+            ...portalData.loans[0],
+            installments: [
+              ...portalData.loans[0]!.installments,
+              {
+                sequenceNumber: 2,
+                dueDate: "2026-09-25",
+                totalCents: 20_000,
+                paidCents: 0,
+                status: "cancelled",
+              },
+            ],
+          },
+          {
+            ...portalData.loans[0],
+            loanId: "loan-cancelled",
+            status: "cancelled",
+            outstandingCents: 50_000,
+            amortizationAvailable: false,
+            createdAt: "2026-08-10T12:00:00.000Z",
+          },
+        ],
+      }),
+    }),
+  );
+
+  await page.goto("/cliente");
+
+  await expect(page.locator(".loan-card")).toHaveCount(1);
+  await expect(page.getByText("R$ 800,00").first()).toBeVisible();
+  await expect(page.getByText("Parcela 2", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("Cancelado", { exact: false })).toHaveCount(0);
+});
